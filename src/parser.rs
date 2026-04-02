@@ -2,6 +2,63 @@ use crate::ast::*;
 use crate::error::Error;
 use crate::wire::{Cursor, WireType};
 
+#[inline]
+fn decode_packed_f32(dst: &mut Vec<f32>, bytes: &[u8]) {
+    let count = bytes.len() / 4;
+    if count == 0 {
+        return;
+    }
+    dst.reserve(count);
+    let base = dst.len();
+    // SAFETY: bytes is 4-byte aligned in count, we reserved space,
+    // and f32 has no invalid bit patterns. On LE platforms this is
+    // a direct memcpy; on BE it reinterprets correctly via from_le_bytes.
+    #[cfg(target_endian = "little")]
+    {
+        unsafe {
+            dst.set_len(base + count);
+            core::ptr::copy_nonoverlapping(
+                bytes.as_ptr(),
+                dst.as_mut_ptr().add(base) as *mut u8,
+                count * 4,
+            );
+        }
+    }
+    #[cfg(target_endian = "big")]
+    {
+        for chunk in bytes.chunks_exact(4) {
+            dst.push(f32::from_le_bytes(chunk.try_into().unwrap()));
+        }
+    }
+}
+
+#[inline]
+fn decode_packed_f64(dst: &mut Vec<f64>, bytes: &[u8]) {
+    let count = bytes.len() / 8;
+    if count == 0 {
+        return;
+    }
+    dst.reserve(count);
+    let base = dst.len();
+    #[cfg(target_endian = "little")]
+    {
+        unsafe {
+            dst.set_len(base + count);
+            core::ptr::copy_nonoverlapping(
+                bytes.as_ptr(),
+                dst.as_mut_ptr().add(base) as *mut u8,
+                count * 8,
+            );
+        }
+    }
+    #[cfg(target_endian = "big")]
+    {
+        for chunk in bytes.chunks_exact(8) {
+            dst.push(f64::from_le_bytes(chunk.try_into().unwrap()));
+        }
+    }
+}
+
 /// Parses ONNX protobuf bytes into a [`Model`].
 ///
 /// The input should be the raw bytes of an `.onnx` file (a serialized
@@ -271,13 +328,7 @@ fn parse_tensor<'a>(cursor: &mut Cursor<'a>) -> Result<TensorProto<'a>, Error> {
                 WireType::LengthDelimited => {
                     let sub = cursor.read_sub_cursor()?;
                     let bytes = sub.remaining_slice();
-                    let count = bytes.len() / 4;
-                    t.float_data.reserve(count);
-                    for chunk in bytes.chunks_exact(4) {
-                        t.float_data.push(f32::from_le_bytes(
-                            chunk.try_into().unwrap(),
-                        ));
-                    }
+                    decode_packed_f32(&mut t.float_data, bytes);
                 }
                 _ => {
                     t.float_data.push(cursor.read_f32_le()?);
@@ -310,13 +361,7 @@ fn parse_tensor<'a>(cursor: &mut Cursor<'a>) -> Result<TensorProto<'a>, Error> {
                 WireType::LengthDelimited => {
                     let sub = cursor.read_sub_cursor()?;
                     let bytes = sub.remaining_slice();
-                    let count = bytes.len() / 8;
-                    t.double_data.reserve(count);
-                    for chunk in bytes.chunks_exact(8) {
-                        t.double_data.push(f64::from_le_bytes(
-                            chunk.try_into().unwrap(),
-                        ));
-                    }
+                    decode_packed_f64(&mut t.double_data, bytes);
                 }
                 _ => {
                     t.double_data.push(cursor.read_f64_le()?);
@@ -416,14 +461,7 @@ fn parse_attribute<'a>(cursor: &mut Cursor<'a>) -> Result<Attribute<'a>, Error> 
             7 => match wire_type {
                 WireType::LengthDelimited => {
                     let sub = cursor.read_sub_cursor()?;
-                    let bytes = sub.remaining_slice();
-                    let count = bytes.len() / 4;
-                    attr.floats.reserve(count);
-                    for chunk in bytes.chunks_exact(4) {
-                        attr.floats.push(f32::from_le_bytes(
-                            chunk.try_into().unwrap(),
-                        ));
-                    }
+                    decode_packed_f32(&mut attr.floats, sub.remaining_slice());
                 }
                 _ => {
                     attr.floats.push(cursor.read_f32_le()?);
