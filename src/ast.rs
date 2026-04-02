@@ -1356,43 +1356,37 @@ pub struct TensorSegment {
 /// An ONNX tensor value.
 ///
 /// Corresponds to `TensorProto` in the ONNX protobuf schema. Tensor data
-/// can be stored in typed fields ([`float_data`](TensorProto::float_data),
-/// [`int32_data`](TensorProto::int32_data), etc.) or as
-/// [`raw_data`](TensorProto::raw_data) bytes.
+/// can be stored in typed fields or as raw bytes. Use the constructor methods
+/// to create tensors and the accessor methods ([`as_f32`](TensorProto::as_f32),
+/// [`as_i64`](TensorProto::as_i64), etc.) to read data.
 ///
 /// # Examples
 ///
 /// ```
 /// use onnx_rs::ast::*;
 ///
-/// let tensor = TensorProto {
-///     name: "weights",
-///     dims: vec![2, 3],
-///     data_type: DataType::Float,
-///     float_data: vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
-///     ..Default::default()
-/// };
+/// let tensor = TensorProto::from_f32("weights", vec![2, 3], vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
 ///
-/// assert_eq!(tensor.dims, vec![2, 3]);
-/// assert_eq!(tensor.float_data.len(), 6);
+/// assert_eq!(tensor.dims(), &[2, 3]);
+/// assert_eq!(tensor.as_f32().unwrap().len(), 6);
 /// ```
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct TensorProto<'a> {
-    pub dims: Vec<i64>,
-    pub data_type: DataType,
-    pub segment: Option<TensorSegment>,
-    pub float_data: Vec<f32>,
-    pub int32_data: Vec<i32>,
-    pub string_data: Vec<&'a [u8]>,
-    pub int64_data: Vec<i64>,
-    pub name: &'a str,
-    pub raw_data: &'a [u8],
-    pub double_data: Vec<f64>,
-    pub uint64_data: Vec<u64>,
-    pub doc_string: &'a str,
-    pub external_data: Vec<StringStringEntry<'a>>,
-    pub data_location: DataLocation,
-    pub metadata_props: Vec<StringStringEntry<'a>>,
+    pub(crate) dims: Vec<i64>,
+    pub(crate) data_type: DataType,
+    pub(crate) segment: Option<TensorSegment>,
+    pub(crate) float_data: Vec<f32>,
+    pub(crate) int32_data: Vec<i32>,
+    pub(crate) string_data: Vec<&'a [u8]>,
+    pub(crate) int64_data: Vec<i64>,
+    pub(crate) raw_data: &'a [u8],
+    pub(crate) double_data: Vec<f64>,
+    pub(crate) uint64_data: Vec<u64>,
+    pub(crate) name: &'a str,
+    pub(crate) doc_string: &'a str,
+    pub(crate) external_data: Vec<StringStringEntry<'a>>,
+    pub(crate) data_location: DataLocation,
+    pub(crate) metadata_props: Vec<StringStringEntry<'a>>,
 }
 
 /// A sparse tensor stored as separate values and indices tensors.
@@ -1485,4 +1479,608 @@ pub struct Function<'a> {
     pub overload: &'a str,
     pub value_info: Vec<ValueInfo<'a>>,
     pub metadata_props: Vec<StringStringEntry<'a>>,
+}
+
+// ---------------------------------------------------------------------------
+// Convenience methods
+// ---------------------------------------------------------------------------
+
+impl<'a> TensorProto<'a> {
+    // -- Constructors --
+
+    /// Creates a tensor with [`DataType::Float`] data.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_f32("W", vec![2, 3], vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+    /// assert_eq!(t.name(), "W");
+    /// assert_eq!(t.dims(), &[2, 3]);
+    /// assert_eq!(t.data_type(), DataType::Float);
+    /// assert_eq!(t.as_f32().unwrap().len(), 6);
+    /// ```
+    pub fn from_f32(name: &'a str, dims: Vec<i64>, data: Vec<f32>) -> Self {
+        Self { name, dims, data_type: DataType::Float, float_data: data, ..Default::default() }
+    }
+
+    /// Creates a tensor with [`DataType::Double`] data.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_f64("bias", vec![2], vec![0.1, 0.2]);
+    /// assert_eq!(t.data_type(), DataType::Double);
+    /// assert_eq!(*t.as_f64().unwrap(), [0.1, 0.2]);
+    /// ```
+    pub fn from_f64(name: &'a str, dims: Vec<i64>, data: Vec<f64>) -> Self {
+        Self { name, dims, data_type: DataType::Double, double_data: data, ..Default::default() }
+    }
+
+    /// Creates a tensor with [`DataType::Int32`] data.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_i32("idx", vec![3], vec![1, 2, 3]);
+    /// assert_eq!(t.data_type(), DataType::Int32);
+    /// assert_eq!(*t.as_i32().unwrap(), [1, 2, 3]);
+    /// ```
+    pub fn from_i32(name: &'a str, dims: Vec<i64>, data: Vec<i32>) -> Self {
+        Self { name, dims, data_type: DataType::Int32, int32_data: data, ..Default::default() }
+    }
+
+    /// Creates a tensor with [`DataType::Int64`] data.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_i64("shape", vec![3], vec![1, 224, 224]);
+    /// assert_eq!(t.data_type(), DataType::Int64);
+    /// assert_eq!(*t.as_i64().unwrap(), [1, 224, 224]);
+    /// ```
+    pub fn from_i64(name: &'a str, dims: Vec<i64>, data: Vec<i64>) -> Self {
+        Self { name, dims, data_type: DataType::Int64, int64_data: data, ..Default::default() }
+    }
+
+    /// Creates a tensor with [`DataType::Uint64`] data.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_u64("counts", vec![2], vec![42, 100]);
+    /// assert_eq!(t.data_type(), DataType::Uint64);
+    /// assert_eq!(*t.as_u64().unwrap(), [42, 100]);
+    /// ```
+    pub fn from_u64(name: &'a str, dims: Vec<i64>, data: Vec<u64>) -> Self {
+        Self { name, dims, data_type: DataType::Uint64, uint64_data: data, ..Default::default() }
+    }
+
+    /// Creates a tensor with [`DataType::String`] data.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_strings("labels", vec![2], vec![b"cat", b"dog"]);
+    /// assert_eq!(t.data_type(), DataType::String);
+    /// assert_eq!(t.as_strings().unwrap(), &[b"cat".as_slice(), b"dog".as_slice()]);
+    /// ```
+    pub fn from_strings(name: &'a str, dims: Vec<i64>, data: Vec<&'a [u8]>) -> Self {
+        Self { name, dims, data_type: DataType::String, string_data: data, ..Default::default() }
+    }
+
+    /// Creates a tensor from raw bytes with a given [`DataType`].
+    ///
+    /// Use this for types stored as raw little-endian bytes (the default for
+    /// modern exporters like PyTorch), or for exotic types like Float8 or Int4.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let bytes = [1.0f32, 2.0].iter().flat_map(|f| f.to_le_bytes()).collect::<Vec<_>>();
+    /// let t = TensorProto::from_raw("W", vec![2], DataType::Float, &bytes);
+    /// assert_eq!(*t.as_f32().unwrap(), [1.0, 2.0]);
+    /// ```
+    pub fn from_raw(name: &'a str, dims: Vec<i64>, data_type: DataType, data: &'a [u8]) -> Self {
+        Self { name, dims, data_type, raw_data: data, ..Default::default() }
+    }
+
+    // -- Getters --
+
+    /// Returns the tensor name.
+    ///
+    /// ```
+    /// use onnx_rs::ast::TensorProto;
+    ///
+    /// let t = TensorProto::from_f32("weight", vec![2], vec![1.0, 2.0]);
+    /// assert_eq!(t.name(), "weight");
+    /// ```
+    pub fn name(&self) -> &'a str {
+        self.name
+    }
+
+    /// Returns the tensor dimensions.
+    ///
+    /// ```
+    /// use onnx_rs::ast::TensorProto;
+    ///
+    /// let t = TensorProto::from_f32("W", vec![2, 3], vec![0.0; 6]);
+    /// assert_eq!(t.dims(), &[2, 3]);
+    /// ```
+    pub fn dims(&self) -> &[i64] {
+        &self.dims
+    }
+
+    /// Returns the tensor's [`DataType`].
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_i64("ids", vec![3], vec![1, 2, 3]);
+    /// assert_eq!(t.data_type(), DataType::Int64);
+    /// ```
+    pub fn data_type(&self) -> DataType {
+        self.data_type
+    }
+
+    /// Returns the optional [`TensorSegment`] for segmented tensors.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_raw("chunk", vec![], DataType::Float, &[0u8; 100])
+    ///     .with_segment(TensorSegment { begin: 0, end: 50 });
+    /// assert_eq!(t.segment().unwrap().begin, 0);
+    /// ```
+    pub fn segment(&self) -> Option<&TensorSegment> {
+        self.segment.as_ref()
+    }
+
+    /// Returns the tensor's documentation string.
+    ///
+    /// ```
+    /// use onnx_rs::ast::TensorProto;
+    ///
+    /// let t = TensorProto::from_f32("W", vec![], vec![]).with_doc_string("layer 1 weights");
+    /// assert_eq!(t.doc_string(), "layer 1 weights");
+    /// ```
+    pub fn doc_string(&self) -> &'a str {
+        self.doc_string
+    }
+
+    /// Returns the external data entries for externally stored tensors.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_raw("ext", vec![], DataType::Float, &[])
+    ///     .with_data_location(DataLocation::External)
+    ///     .with_external_data(vec![StringStringEntry { key: "location", value: "w.bin" }]);
+    /// assert_eq!(t.external_data()[0].key, "location");
+    /// ```
+    pub fn external_data(&self) -> &[StringStringEntry<'a>] {
+        &self.external_data
+    }
+
+    /// Returns where the tensor data is stored ([`DataLocation::Default`] or
+    /// [`DataLocation::External`]).
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_raw("ext", vec![], DataType::Float, &[])
+    ///     .with_data_location(DataLocation::External);
+    /// assert_eq!(t.data_location(), DataLocation::External);
+    /// ```
+    pub fn data_location(&self) -> DataLocation {
+        self.data_location
+    }
+
+    /// Returns the metadata key-value pairs attached to this tensor.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_f32("W", vec![], vec![])
+    ///     .with_metadata_props(vec![StringStringEntry { key: "author", value: "onnx-rs" }]);
+    /// assert_eq!(t.metadata_props()[0].value, "onnx-rs");
+    /// ```
+    pub fn metadata_props(&self) -> &[StringStringEntry<'a>] {
+        &self.metadata_props
+    }
+
+    // -- Builder-style setters --
+
+    /// Sets the [`TensorSegment`] for segmented tensors.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_raw("chunk", vec![], DataType::Float, &[0u8; 100])
+    ///     .with_segment(TensorSegment { begin: 0, end: 50 });
+    /// assert_eq!(t.segment().unwrap().end, 50);
+    /// ```
+    pub fn with_segment(mut self, segment: TensorSegment) -> Self {
+        self.segment = Some(segment);
+        self
+    }
+
+    /// Sets the documentation string.
+    ///
+    /// ```
+    /// use onnx_rs::ast::TensorProto;
+    ///
+    /// let t = TensorProto::from_f32("W", vec![], vec![]).with_doc_string("my doc");
+    /// assert_eq!(t.doc_string(), "my doc");
+    /// ```
+    pub fn with_doc_string(mut self, doc_string: &'a str) -> Self {
+        self.doc_string = doc_string;
+        self
+    }
+
+    /// Sets external data entries for externally stored tensors.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_raw("ext", vec![], DataType::Float, &[])
+    ///     .with_external_data(vec![StringStringEntry { key: "location", value: "w.bin" }]);
+    /// assert_eq!(t.external_data().len(), 1);
+    /// ```
+    pub fn with_external_data(mut self, external_data: Vec<StringStringEntry<'a>>) -> Self {
+        self.external_data = external_data;
+        self
+    }
+
+    /// Sets the data location ([`DataLocation::Default`] or [`DataLocation::External`]).
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_raw("ext", vec![], DataType::Float, &[])
+    ///     .with_data_location(DataLocation::External);
+    /// assert_eq!(t.data_location(), DataLocation::External);
+    /// ```
+    pub fn with_data_location(mut self, data_location: DataLocation) -> Self {
+        self.data_location = data_location;
+        self
+    }
+
+    /// Sets metadata key-value pairs on the tensor.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_f32("W", vec![], vec![])
+    ///     .with_metadata_props(vec![StringStringEntry { key: "k", value: "v" }]);
+    /// assert_eq!(t.metadata_props().len(), 1);
+    /// ```
+    pub fn with_metadata_props(mut self, metadata_props: Vec<StringStringEntry<'a>>) -> Self {
+        self.metadata_props = metadata_props;
+        self
+    }
+
+    // -- Data accessors --
+
+    /// Returns `f32` data, reading from either the typed field or raw bytes.
+    ///
+    /// Returns [`Cow::Borrowed`](std::borrow::Cow::Borrowed) when data is in the
+    /// typed field (zero-copy), or [`Cow::Owned`](std::borrow::Cow::Owned) when
+    /// decoded from raw bytes.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_f32("W", vec![2], vec![1.0, 2.0]);
+    /// assert_eq!(*t.as_f32().unwrap(), [1.0, 2.0]);
+    ///
+    /// let bytes: Vec<u8> = [3.0f32, 4.0].iter().flat_map(|f| f.to_le_bytes()).collect();
+    /// let t = TensorProto::from_raw("W", vec![2], DataType::Float, &bytes);
+    /// assert_eq!(*t.as_f32().unwrap(), [3.0, 4.0]);
+    /// ```
+    pub fn as_f32(&self) -> Option<std::borrow::Cow<'_, [f32]>> {
+        if !self.float_data.is_empty() {
+            return Some(std::borrow::Cow::Borrowed(&self.float_data));
+        }
+        if !self.raw_data.is_empty() && self.data_type == DataType::Float {
+            return Some(std::borrow::Cow::Owned(decode_raw_f32(self.raw_data)));
+        }
+        None
+    }
+
+    /// Returns `f64` data, reading from either the typed field or raw bytes.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_f64("b", vec![2], vec![0.1, 0.2]);
+    /// assert_eq!(*t.as_f64().unwrap(), [0.1, 0.2]);
+    /// ```
+    pub fn as_f64(&self) -> Option<std::borrow::Cow<'_, [f64]>> {
+        if !self.double_data.is_empty() {
+            return Some(std::borrow::Cow::Borrowed(&self.double_data));
+        }
+        if !self.raw_data.is_empty() && self.data_type == DataType::Double {
+            return Some(std::borrow::Cow::Owned(decode_raw_f64(self.raw_data)));
+        }
+        None
+    }
+
+    /// Returns `i32` data, reading from either the typed field or raw bytes.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_i32("x", vec![3], vec![1, -2, 3]);
+    /// assert_eq!(*t.as_i32().unwrap(), [1, -2, 3]);
+    /// ```
+    pub fn as_i32(&self) -> Option<std::borrow::Cow<'_, [i32]>> {
+        if !self.int32_data.is_empty() {
+            return Some(std::borrow::Cow::Borrowed(&self.int32_data));
+        }
+        if !self.raw_data.is_empty() && self.data_type == DataType::Int32 {
+            return Some(std::borrow::Cow::Owned(decode_raw_i32(self.raw_data)));
+        }
+        None
+    }
+
+    /// Returns `i64` data, reading from either the typed field or raw bytes.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_i64("ids", vec![3], vec![10, 20, 30]);
+    /// assert_eq!(*t.as_i64().unwrap(), [10, 20, 30]);
+    /// ```
+    pub fn as_i64(&self) -> Option<std::borrow::Cow<'_, [i64]>> {
+        if !self.int64_data.is_empty() {
+            return Some(std::borrow::Cow::Borrowed(&self.int64_data));
+        }
+        if !self.raw_data.is_empty() && self.data_type == DataType::Int64 {
+            return Some(std::borrow::Cow::Owned(decode_raw_i64(self.raw_data)));
+        }
+        None
+    }
+
+    /// Returns `u64` data, reading from either the typed field or raw bytes.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_u64("counts", vec![2], vec![42, 100]);
+    /// assert_eq!(*t.as_u64().unwrap(), [42, 100]);
+    /// ```
+    pub fn as_u64(&self) -> Option<std::borrow::Cow<'_, [u64]>> {
+        if !self.uint64_data.is_empty() {
+            return Some(std::borrow::Cow::Borrowed(&self.uint64_data));
+        }
+        if !self.raw_data.is_empty() && self.data_type == DataType::Uint64 {
+            return Some(std::borrow::Cow::Owned(decode_raw_u64(self.raw_data)));
+        }
+        None
+    }
+
+    /// Returns string data as byte slices.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_strings("labels", vec![2], vec![b"yes", b"no"]);
+    /// assert_eq!(t.as_strings().unwrap().len(), 2);
+    /// ```
+    pub fn as_strings(&self) -> Option<&[&'a [u8]]> {
+        if !self.string_data.is_empty() {
+            return Some(&self.string_data);
+        }
+        None
+    }
+
+    /// Returns the raw byte data, if present.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let t = TensorProto::from_raw("x", vec![4], DataType::Float8e4m3fn, &[1, 2, 3, 4]);
+    /// assert_eq!(t.as_raw().unwrap(), &[1, 2, 3, 4]);
+    /// ```
+    pub fn as_raw(&self) -> Option<&'a [u8]> {
+        if !self.raw_data.is_empty() {
+            return Some(self.raw_data);
+        }
+        None
+    }
+}
+
+fn decode_raw_f32(bytes: &[u8]) -> Vec<f32> {
+    bytes
+        .chunks_exact(4)
+        .map(|c| f32::from_le_bytes(c.try_into().unwrap()))
+        .collect()
+}
+
+fn decode_raw_f64(bytes: &[u8]) -> Vec<f64> {
+    bytes
+        .chunks_exact(8)
+        .map(|c| f64::from_le_bytes(c.try_into().unwrap()))
+        .collect()
+}
+
+fn decode_raw_i32(bytes: &[u8]) -> Vec<i32> {
+    bytes
+        .chunks_exact(4)
+        .map(|c| i32::from_le_bytes(c.try_into().unwrap()))
+        .collect()
+}
+
+fn decode_raw_i64(bytes: &[u8]) -> Vec<i64> {
+    bytes
+        .chunks_exact(8)
+        .map(|c| i64::from_le_bytes(c.try_into().unwrap()))
+        .collect()
+}
+
+fn decode_raw_u64(bytes: &[u8]) -> Vec<u64> {
+    bytes
+        .chunks_exact(8)
+        .map(|c| u64::from_le_bytes(c.try_into().unwrap()))
+        .collect()
+}
+
+impl<'a> Graph<'a> {
+    /// Finds an initializer tensor by name.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let graph = Graph {
+    ///     initializer: vec![
+    ///         TensorProto::from_f32("W", vec![2], vec![1.0, 2.0]),
+    ///         TensorProto::from_f32("b", vec![1], vec![0.5]),
+    ///     ],
+    ///     ..Default::default()
+    /// };
+    /// assert_eq!(graph.get_initializer("b").unwrap().dims(), &[1]);
+    /// assert!(graph.get_initializer("missing").is_none());
+    /// ```
+    pub fn get_initializer(&self, name: &str) -> Option<&TensorProto<'a>> {
+        self.initializer.iter().find(|t| t.name == name)
+    }
+
+    /// Returns graph inputs that are not also initializers (the true runtime inputs).
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let graph = Graph {
+    ///     input: vec![
+    ///         ValueInfo { name: "X", ..Default::default() },
+    ///         ValueInfo { name: "W", ..Default::default() },
+    ///     ],
+    ///     initializer: vec![TensorProto::from_f32("W", vec![2], vec![1.0, 2.0])],
+    ///     ..Default::default()
+    /// };
+    /// let inputs = graph.non_init_inputs();
+    /// assert_eq!(inputs.len(), 1);
+    /// assert_eq!(inputs[0].name, "X");
+    /// ```
+    pub fn non_init_inputs(&self) -> Vec<&ValueInfo<'a>> {
+        self.input
+            .iter()
+            .filter(|vi| !self.initializer.iter().any(|init| init.name == vi.name))
+            .collect()
+    }
+}
+
+impl<'a> ValueInfo<'a> {
+    /// Returns the element [`DataType`] if this value is a tensor type.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let vi = ValueInfo {
+    ///     name: "X",
+    ///     r#type: Some(TypeProto {
+    ///         value: Some(TypeValue::Tensor(TensorTypeProto {
+    ///             elem_type: DataType::Float,
+    ///             shape: None,
+    ///         })),
+    ///         denotation: "",
+    ///     }),
+    ///     ..Default::default()
+    /// };
+    /// assert_eq!(vi.tensor_elem_type(), Some(DataType::Float));
+    /// ```
+    pub fn tensor_elem_type(&self) -> Option<DataType> {
+        match &self.r#type {
+            Some(tp) => match &tp.value {
+                Some(TypeValue::Tensor(t)) => Some(t.elem_type),
+                _ => None,
+            },
+            None => None,
+        }
+    }
+
+    /// Returns the [`TensorShape`] if this value is a tensor type with a shape.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let vi = ValueInfo {
+    ///     name: "X",
+    ///     r#type: Some(TypeProto {
+    ///         value: Some(TypeValue::Tensor(TensorTypeProto {
+    ///             elem_type: DataType::Float,
+    ///             shape: Some(TensorShape {
+    ///                 dim: vec![
+    ///                     TensorShapeDimension { value: Dimension::Param("N"), denotation: "" },
+    ///                     TensorShapeDimension { value: Dimension::Value(784), denotation: "" },
+    ///                 ],
+    ///             }),
+    ///         })),
+    ///         denotation: "",
+    ///     }),
+    ///     ..Default::default()
+    /// };
+    /// assert_eq!(vi.tensor_shape().unwrap().rank(), 2);
+    /// ```
+    pub fn tensor_shape(&self) -> Option<&TensorShape<'a>> {
+        match &self.r#type {
+            Some(tp) => match &tp.value {
+                Some(TypeValue::Tensor(t)) => t.shape.as_ref(),
+                _ => None,
+            },
+            None => None,
+        }
+    }
+}
+
+impl TensorShape<'_> {
+    /// Returns the number of dimensions (rank) of the tensor shape.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let shape = TensorShape {
+    ///     dim: vec![
+    ///         TensorShapeDimension { value: Dimension::Value(3), denotation: "" },
+    ///         TensorShapeDimension { value: Dimension::Value(224), denotation: "" },
+    ///     ],
+    /// };
+    /// assert_eq!(shape.rank(), 2);
+    /// ```
+    pub fn rank(&self) -> usize {
+        self.dim.len()
+    }
+
+    /// Returns concrete dimension values if all dimensions are fixed.
+    ///
+    /// Returns `None` if any dimension is a symbolic parameter.
+    ///
+    /// ```
+    /// use onnx_rs::ast::*;
+    ///
+    /// let fixed = TensorShape {
+    ///     dim: vec![
+    ///         TensorShapeDimension { value: Dimension::Value(3), denotation: "" },
+    ///         TensorShapeDimension { value: Dimension::Value(224), denotation: "" },
+    ///     ],
+    /// };
+    /// assert_eq!(fixed.fixed_dims(), Some(vec![3, 224]));
+    ///
+    /// let dynamic = TensorShape {
+    ///     dim: vec![
+    ///         TensorShapeDimension { value: Dimension::Param("batch"), denotation: "" },
+    ///         TensorShapeDimension { value: Dimension::Value(224), denotation: "" },
+    ///     ],
+    /// };
+    /// assert_eq!(dynamic.fixed_dims(), None);
+    /// ```
+    pub fn fixed_dims(&self) -> Option<Vec<i64>> {
+        self.dim
+            .iter()
+            .map(|d| match &d.value {
+                Dimension::Value(v) => Some(*v),
+                Dimension::Param(_) => None,
+            })
+            .collect()
+    }
 }

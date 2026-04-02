@@ -88,11 +88,11 @@ fn test_node_default() {
 #[test]
 fn test_tensor_proto_default() {
     let tensor = TensorProto::default();
-    assert!(tensor.dims.is_empty());
-    assert_eq!(tensor.data_type, DataType::Undefined);
-    assert!(tensor.float_data.is_empty());
-    assert!(tensor.raw_data.is_empty());
-    assert_eq!(tensor.data_location, DataLocation::Default);
+    assert!(tensor.dims().is_empty());
+    assert_eq!(tensor.data_type(), DataType::Undefined);
+    assert!(tensor.as_f32().is_none());
+    assert!(tensor.as_raw().is_none());
+    assert_eq!(tensor.data_location(), DataLocation::Default);
 }
 
 #[test]

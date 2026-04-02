@@ -40,7 +40,7 @@ fn main() {
 
         println!("\nInitializers: {}", graph.initializer.len());
         for init in &graph.initializer {
-            println!("  {} — {:?} {:?}", init.name, init.data_type, init.dims);
+            println!("  {} — {:?} {:?}", init.name(), init.data_type(), init.dims());
         }
 
         println!("\nNodes ({}):", graph.node.len());

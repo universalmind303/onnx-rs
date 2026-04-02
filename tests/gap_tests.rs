@@ -44,33 +44,21 @@ fn test_data_type_float4e2m1() {
 fn test_roundtrip_tensor_with_float8_type() {
     let model = Model {
         graph: Some(Graph {
-            initializer: vec![TensorProto {
-                name: "f8_weight",
-                dims: vec![4],
-                data_type: DataType::Float8e4m3fn,
-                raw_data: &[0x10, 0x20, 0x30, 0x40],
-                ..Default::default()
-            }],
+            initializer: vec![TensorProto::from_raw("f8_weight", vec![4], DataType::Float8e4m3fn, &[0x10, 0x20, 0x30, 0x40])],
             ..Default::default()
         }),
         ..Default::default()
     };
     let bytes = encode(&model);
     let parsed = parse(&bytes).unwrap();
-    assert_eq!(parsed.graph.unwrap().initializer[0].data_type, DataType::Float8e4m3fn);
+    assert_eq!(parsed.graph.unwrap().initializer[0].data_type(), DataType::Float8e4m3fn);
 }
 
 #[test]
 fn test_roundtrip_tensor_with_int4_type() {
     let model = Model {
         graph: Some(Graph {
-            initializer: vec![TensorProto {
-                name: "i4",
-                dims: vec![8],
-                data_type: DataType::Int4,
-                raw_data: &[0x12, 0x34, 0x56, 0x78],
-                ..Default::default()
-            }],
+            initializer: vec![TensorProto::from_raw("i4", vec![8], DataType::Int4, &[0x12, 0x34, 0x56, 0x78])],
             ..Default::default()
         }),
         ..Default::default()
@@ -148,12 +136,7 @@ fn test_default_attribute_values_roundtrip() {
 fn test_negative_int64_in_tensor() {
     let model = Model {
         graph: Some(Graph {
-            initializer: vec![TensorProto {
-                name: "neg",
-                data_type: DataType::Int64,
-                int64_data: vec![-1, -100, -9999, i64::MIN],
-                ..Default::default()
-            }],
+            initializer: vec![TensorProto::from_i64("neg", vec![], vec![-1, -100, -9999, i64::MIN])],
             ..Default::default()
         }),
         ..Default::default()
@@ -161,7 +144,7 @@ fn test_negative_int64_in_tensor() {
     let bytes = encode(&model);
     let parsed = parse(&bytes).unwrap();
     assert_eq!(
-        parsed.graph.unwrap().initializer[0].int64_data,
+        *parsed.graph.unwrap().initializer[0].as_i64().unwrap(),
         vec![-1, -100, -9999, i64::MIN]
     );
 }
@@ -170,12 +153,7 @@ fn test_negative_int64_in_tensor() {
 fn test_negative_int32_in_tensor() {
     let model = Model {
         graph: Some(Graph {
-            initializer: vec![TensorProto {
-                name: "neg32",
-                data_type: DataType::Int32,
-                int32_data: vec![-1, -42, i32::MIN],
-                ..Default::default()
-            }],
+            initializer: vec![TensorProto::from_i32("neg32", vec![], vec![-1, -42, i32::MIN])],
             ..Default::default()
         }),
         ..Default::default()
@@ -183,7 +161,7 @@ fn test_negative_int32_in_tensor() {
     let bytes = encode(&model);
     let parsed = parse(&bytes).unwrap();
     assert_eq!(
-        parsed.graph.unwrap().initializer[0].int32_data,
+        *parsed.graph.unwrap().initializer[0].as_i32().unwrap(),
         vec![-1, -42, i32::MIN]
     );
 }
@@ -278,13 +256,7 @@ fn test_unicode_node_name() {
 fn test_scalar_tensor_roundtrip() {
     let model = Model {
         graph: Some(Graph {
-            initializer: vec![TensorProto {
-                name: "scalar",
-                dims: vec![],
-                data_type: DataType::Float,
-                float_data: vec![3.14],
-                ..Default::default()
-            }],
+            initializer: vec![TensorProto::from_f32("scalar", vec![], vec![3.14])],
             ..Default::default()
         }),
         ..Default::default()
@@ -292,8 +264,8 @@ fn test_scalar_tensor_roundtrip() {
     let bytes = encode(&model);
     let parsed = parse(&bytes).unwrap();
     let t = &parsed.graph.unwrap().initializer[0];
-    assert!(t.dims.is_empty());
-    assert_eq!(t.float_data, vec![3.14f32]);
+    assert!(t.dims().is_empty());
+    assert_eq!(*t.as_f32().unwrap(), vec![3.14f32]);
 }
 
 // ============================================================
@@ -428,11 +400,7 @@ fn test_if_node_with_then_else_branches() {
             attribute: vec![Attribute {
                 name: "value",
                 r#type: AttributeType::Tensor,
-                t: Some(TensorProto {
-                    data_type: DataType::Float,
-                    float_data: vec![1.0],
-                    ..Default::default()
-                }),
+                t: Some(TensorProto::from_f32("", vec![], vec![1.0])),
                 ..Default::default()
             }],
             ..Default::default()
@@ -452,11 +420,7 @@ fn test_if_node_with_then_else_branches() {
             attribute: vec![Attribute {
                 name: "value",
                 r#type: AttributeType::Tensor,
-                t: Some(TensorProto {
-                    data_type: DataType::Float,
-                    float_data: vec![0.0],
-                    ..Default::default()
-                }),
+                t: Some(TensorProto::from_f32("", vec![], vec![0.0])),
                 ..Default::default()
             }],
             ..Default::default()
@@ -805,16 +769,10 @@ fn test_tensor_segment_roundtrip() {
     let raw_data = vec![0u8; 400];
     let model = Model {
         graph: Some(Graph {
-            initializer: vec![TensorProto {
-                name: "chunked",
-                data_type: DataType::Float,
-                segment: Some(TensorSegment {
-                    begin: 0,
-                    end: 100,
-                }),
-                raw_data: &raw_data,
-                ..Default::default()
-            }],
+            initializer: vec![
+                TensorProto::from_raw("chunked", vec![], DataType::Float, &raw_data)
+                    .with_segment(TensorSegment { begin: 0, end: 100 })
+            ],
             ..Default::default()
         }),
         ..Default::default()
@@ -822,7 +780,7 @@ fn test_tensor_segment_roundtrip() {
     let bytes = encode(&model);
     let parsed = parse(&bytes).unwrap();
     let g = parsed.graph.unwrap();
-    let seg = g.initializer[0].segment.as_ref().unwrap();
+    let seg = g.initializer[0].segment().unwrap();
     assert_eq!(seg.begin, 0);
     assert_eq!(seg.end, 100);
 }
@@ -880,18 +838,8 @@ fn test_attribute_tensors_repeated() {
                     name: "weights",
                     r#type: AttributeType::Tensors,
                     tensors: vec![
-                        TensorProto {
-                            name: "w1",
-                            data_type: DataType::Float,
-                            float_data: vec![1.0, 2.0],
-                            ..Default::default()
-                        },
-                        TensorProto {
-                            name: "w2",
-                            data_type: DataType::Float,
-                            float_data: vec![3.0, 4.0],
-                            ..Default::default()
-                        },
+                        TensorProto::from_f32("w1", vec![], vec![1.0, 2.0]),
+                        TensorProto::from_f32("w2", vec![], vec![3.0, 4.0]),
                     ],
                     ..Default::default()
                 }],
@@ -905,8 +853,8 @@ fn test_attribute_tensors_repeated() {
     let parsed = parse(&bytes).unwrap();
     let attr = &parsed.graph.unwrap().node[0].attribute[0];
     assert_eq!(attr.tensors.len(), 2);
-    assert_eq!(attr.tensors[0].name, "w1");
-    assert_eq!(attr.tensors[1].float_data, vec![3.0, 4.0]);
+    assert_eq!(attr.tensors[0].name(), "w1");
+    assert_eq!(*attr.tensors[1].as_f32().unwrap(), vec![3.0, 4.0]);
 }
 
 // ============================================================
@@ -963,16 +911,8 @@ fn test_attribute_sparse_tensor_roundtrip() {
                     r#type: AttributeType::SparseTensor,
                     sparse_tensor: Some(SparseTensor {
                         dims: vec![10, 10],
-                        values: Some(TensorProto {
-                            data_type: DataType::Float,
-                            float_data: vec![1.0, 2.0, 3.0],
-                            ..Default::default()
-                        }),
-                        indices: Some(TensorProto {
-                            data_type: DataType::Int64,
-                            int64_data: vec![0, 5, 9],
-                            ..Default::default()
-                        }),
+                        values: Some(TensorProto::from_f32("", vec![], vec![1.0, 2.0, 3.0])),
+                        indices: Some(TensorProto::from_i64("", vec![], vec![0, 5, 9])),
                     }),
                     ..Default::default()
                 }],
@@ -1031,12 +971,7 @@ fn test_function_attribute_proto_defaults() {
 fn test_tensor_uint64_data_roundtrip() {
     let model = Model {
         graph: Some(Graph {
-            initializer: vec![TensorProto {
-                name: "u64",
-                data_type: DataType::Uint64,
-                uint64_data: vec![0, 1, u64::MAX, 42],
-                ..Default::default()
-            }],
+            initializer: vec![TensorProto::from_u64("u64", vec![], vec![0, 1, u64::MAX, 42])],
             ..Default::default()
         }),
         ..Default::default()
@@ -1044,7 +979,7 @@ fn test_tensor_uint64_data_roundtrip() {
     let bytes = encode(&model);
     let parsed = parse(&bytes).unwrap();
     assert_eq!(
-        parsed.graph.unwrap().initializer[0].uint64_data,
+        *parsed.graph.unwrap().initializer[0].as_u64().unwrap(),
         vec![0, 1, u64::MAX, 42]
     );
 }

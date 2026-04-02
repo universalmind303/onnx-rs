@@ -257,13 +257,7 @@ fn test_roundtrip_map_type() {
 fn test_roundtrip_tensor_proto_float_data() {
     let model = Model {
         graph: Some(Graph {
-            initializer: vec![TensorProto {
-                name: "weight",
-                dims: vec![2, 3],
-                data_type: DataType::Float,
-                float_data: vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
-                ..Default::default()
-            }],
+            initializer: vec![TensorProto::from_f32("weight", vec![2, 3], vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0])],
             ..Default::default()
         }),
         ..Default::default()
@@ -281,13 +275,7 @@ fn test_roundtrip_tensor_proto_raw_data() {
         .collect();
     let model = Model {
         graph: Some(Graph {
-            initializer: vec![TensorProto {
-                name: "w",
-                dims: vec![3],
-                data_type: DataType::Float,
-                raw_data: &raw,
-                ..Default::default()
-            }],
+            initializer: vec![TensorProto::from_raw("w", vec![3], DataType::Float, &raw)],
             ..Default::default()
         }),
         ..Default::default()
@@ -301,13 +289,7 @@ fn test_roundtrip_tensor_proto_raw_data() {
 fn test_roundtrip_tensor_proto_int64_data() {
     let model = Model {
         graph: Some(Graph {
-            initializer: vec![TensorProto {
-                name: "indices",
-                dims: vec![4],
-                data_type: DataType::Int64,
-                int64_data: vec![10, 20, 30, 40],
-                ..Default::default()
-            }],
+            initializer: vec![TensorProto::from_i64("indices", vec![4], vec![10, 20, 30, 40])],
             ..Default::default()
         }),
         ..Default::default()
@@ -321,12 +303,7 @@ fn test_roundtrip_tensor_proto_int64_data() {
 fn test_roundtrip_tensor_proto_double_data() {
     let model = Model {
         graph: Some(Graph {
-            initializer: vec![TensorProto {
-                name: "d",
-                data_type: DataType::Double,
-                double_data: vec![3.14, 2.718],
-                ..Default::default()
-            }],
+            initializer: vec![TensorProto::from_f64("d", vec![], vec![3.14, 2.718])],
             ..Default::default()
         }),
         ..Default::default()
@@ -340,12 +317,7 @@ fn test_roundtrip_tensor_proto_double_data() {
 fn test_roundtrip_tensor_proto_string_data() {
     let model = Model {
         graph: Some(Graph {
-            initializer: vec![TensorProto {
-                name: "labels",
-                data_type: DataType::String,
-                string_data: vec![b"cat", b"dog"],
-                ..Default::default()
-            }],
+            initializer: vec![TensorProto::from_strings("labels", vec![], vec![b"cat", b"dog"])],
             ..Default::default()
         }),
         ..Default::default()
@@ -361,16 +333,8 @@ fn test_roundtrip_sparse_tensor() {
         graph: Some(Graph {
             sparse_initializer: vec![SparseTensor {
                 dims: vec![3, 4],
-                values: Some(TensorProto {
-                    data_type: DataType::Float,
-                    float_data: vec![1.0, 2.0],
-                    ..Default::default()
-                }),
-                indices: Some(TensorProto {
-                    data_type: DataType::Int64,
-                    int64_data: vec![0, 5],
-                    ..Default::default()
-                }),
+                values: Some(TensorProto::from_f32("", vec![], vec![1.0, 2.0])),
+                indices: Some(TensorProto::from_i64("", vec![], vec![0, 5])),
             }],
             ..Default::default()
         }),
@@ -518,12 +482,7 @@ fn test_roundtrip_attribute_tensor() {
                 attribute: vec![Attribute {
                     name: "value",
                     r#type: AttributeType::Tensor,
-                    t: Some(TensorProto {
-                        dims: vec![2, 2],
-                        data_type: DataType::Float,
-                        float_data: vec![1.0, 2.0, 3.0, 4.0],
-                        ..Default::default()
-                    }),
+                    t: Some(TensorProto::from_f32("", vec![2, 2], vec![1.0, 2.0, 3.0, 4.0])),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -573,26 +532,24 @@ fn test_roundtrip_attribute_graph() {
 fn test_roundtrip_tensor_external_data() {
     let model = Model {
         graph: Some(Graph {
-            initializer: vec![TensorProto {
-                name: "ext",
-                data_type: DataType::Float,
-                data_location: DataLocation::External,
-                external_data: vec![
-                    StringStringEntry {
-                        key: "location",
-                        value: "weights.bin",
-                    },
-                    StringStringEntry {
-                        key: "offset",
-                        value: "0",
-                    },
-                    StringStringEntry {
-                        key: "length",
-                        value: "1024",
-                    },
-                ],
-                ..Default::default()
-            }],
+            initializer: vec![
+                TensorProto::from_raw("ext", vec![], DataType::Float, &[])
+                    .with_data_location(DataLocation::External)
+                    .with_external_data(vec![
+                        StringStringEntry {
+                            key: "location",
+                            value: "weights.bin",
+                        },
+                        StringStringEntry {
+                            key: "offset",
+                            value: "0",
+                        },
+                        StringStringEntry {
+                            key: "length",
+                            value: "1024",
+                        },
+                    ])
+            ],
             ..Default::default()
         }),
         ..Default::default()

@@ -464,10 +464,10 @@ fn test_parse_tensor_proto_float_data() {
     let g = model.graph.unwrap();
     assert_eq!(g.initializer.len(), 1);
     let t = &g.initializer[0];
-    assert_eq!(t.name, "weight");
-    assert_eq!(t.dims, vec![2, 2]);
-    assert_eq!(t.data_type, DataType::Float);
-    assert_eq!(t.float_data, vec![1.0, 2.0, 3.0, 4.0]);
+    assert_eq!(t.name(), "weight");
+    assert_eq!(t.dims(), vec![2, 2]);
+    assert_eq!(t.data_type(), DataType::Float);
+    assert_eq!(*t.as_f32().unwrap(), vec![1.0, 2.0, 3.0, 4.0]);
 }
 
 #[test]
@@ -483,7 +483,7 @@ fn test_parse_tensor_proto_raw_data() {
     let data = encode_length_delimited(7, &graph);
     let model = parse(&data).unwrap();
     let g = model.graph.unwrap();
-    assert_eq!(g.initializer[0].raw_data, raw);
+    assert_eq!(g.initializer[0].as_raw().unwrap(), &raw[..]);
 }
 
 #[test]
@@ -499,7 +499,7 @@ fn test_parse_tensor_proto_int64_data_packed() {
     let data = encode_length_delimited(7, &graph);
     let model = parse(&data).unwrap();
     let g = model.graph.unwrap();
-    assert_eq!(g.initializer[0].int64_data, vec![10, 20, 30]);
+    assert_eq!(*g.initializer[0].as_i64().unwrap(), vec![10, 20, 30]);
 }
 
 // === Unknown fields are skipped ===
@@ -646,7 +646,7 @@ fn test_parse_sparse_tensor() {
     assert_eq!(g.sparse_initializer.len(), 1);
     assert_eq!(g.sparse_initializer[0].dims, vec![3, 4]);
     assert_eq!(
-        g.sparse_initializer[0].values.as_ref().unwrap().data_type,
+        g.sparse_initializer[0].values.as_ref().unwrap().data_type(),
         DataType::Float
     );
 }
