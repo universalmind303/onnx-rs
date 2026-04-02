@@ -1,5 +1,20 @@
 use core::fmt;
 
+/// Errors that can occur when parsing ONNX protobuf bytes.
+///
+/// # Examples
+///
+/// ```
+/// use onnx_rs::{parse, Error};
+///
+/// // Empty input is a valid (default) model in protobuf
+/// let model = parse(&[]).unwrap();
+/// assert_eq!(model.ir_version, 0);
+///
+/// // A truncated varint produces an error
+/// let err = parse(&[0x08]).unwrap_err();
+/// assert!(err.to_string().contains("unexpected EOF"));
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     UnexpectedEof {

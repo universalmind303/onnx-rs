@@ -1,59 +1,187 @@
+/// Top-level ONNX model container.
+///
+/// Corresponds to the `ModelProto` message in the ONNX protobuf schema.
+/// Contains model metadata, operator set versions, and the computation
+/// [`Graph`].
+///
+/// # Examples
+///
+/// ```
+/// use onnx_rs::ast::*;
+///
+/// let model = Model {
+///     ir_version: 9,
+///     producer_name: "my-framework",
+///     producer_version: "1.0",
+///     opset_import: vec![OperatorSetId { domain: "", version: 19 }],
+///     graph: Some(Graph {
+///         name: "main_graph",
+///         node: vec![Node {
+///             op_type: OpType::Add,
+///             input: vec!["A", "B"],
+///             output: vec!["C"],
+///             ..Default::default()
+///         }],
+///         ..Default::default()
+///     }),
+///     ..Default::default()
+/// };
+///
+/// assert_eq!(model.ir_version, 9);
+/// assert_eq!(model.graph.as_ref().unwrap().name, "main_graph");
+/// ```
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct Model {
+pub struct Model<'a> {
     pub ir_version: i64,
-    pub opset_import: Vec<OperatorSetId>,
-    pub producer_name: String,
-    pub producer_version: String,
-    pub domain: String,
+    pub opset_import: Vec<OperatorSetId<'a>>,
+    pub producer_name: &'a str,
+    pub producer_version: &'a str,
+    pub domain: &'a str,
     pub model_version: i64,
-    pub doc_string: String,
-    pub graph: Option<Graph>,
-    pub metadata_props: Vec<StringStringEntry>,
-    pub training_info: Vec<TrainingInfo>,
-    pub functions: Vec<Function>,
+    pub doc_string: &'a str,
+    pub graph: Option<Graph<'a>>,
+    pub metadata_props: Vec<StringStringEntry<'a>>,
+    pub training_info: Vec<TrainingInfo<'a>>,
+    pub functions: Vec<Function<'a>>,
 }
 
+/// An operator set version imported by a model.
+///
+/// Corresponds to `OperatorSetIdProto` in the ONNX protobuf schema.
+/// An empty `domain` refers to the default ONNX operator set.
+///
+/// # Examples
+///
+/// ```
+/// use onnx_rs::ast::OperatorSetId;
+///
+/// let opset = OperatorSetId { domain: "", version: 19 };
+/// assert_eq!(opset.version, 19);
+/// ```
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct OperatorSetId {
-    pub domain: String,
+pub struct OperatorSetId<'a> {
+    pub domain: &'a str,
     pub version: i64,
 }
 
+/// A key-value string pair used for metadata properties.
+///
+/// Corresponds to `StringStringEntryProto` in the ONNX protobuf schema.
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct StringStringEntry {
-    pub key: String,
-    pub value: String,
+pub struct StringStringEntry<'a> {
+    pub key: &'a str,
+    pub value: &'a str,
 }
 
+/// A computation graph containing nodes, inputs, outputs, and initializers.
+///
+/// Corresponds to `GraphProto` in the ONNX protobuf schema.
+///
+/// # Examples
+///
+/// ```
+/// use onnx_rs::ast::*;
+///
+/// let graph = Graph {
+///     name: "my_graph",
+///     node: vec![
+///         Node {
+///             op_type: OpType::Relu,
+///             input: vec!["X"],
+///             output: vec!["Y"],
+///             ..Default::default()
+///         },
+///     ],
+///     input: vec![ValueInfo { name: "X", ..Default::default() }],
+///     output: vec![ValueInfo { name: "Y", ..Default::default() }],
+///     ..Default::default()
+/// };
+///
+/// assert_eq!(graph.node.len(), 1);
+/// assert_eq!(graph.node[0].op_type, OpType::Relu);
+/// ```
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct Graph {
-    pub node: Vec<Node>,
-    pub name: String,
-    pub initializer: Vec<TensorProto>,
-    pub sparse_initializer: Vec<SparseTensor>,
-    pub doc_string: String,
-    pub input: Vec<ValueInfo>,
-    pub output: Vec<ValueInfo>,
-    pub value_info: Vec<ValueInfo>,
-    pub quantization_annotation: Vec<TensorAnnotation>,
-    pub metadata_props: Vec<StringStringEntry>,
+pub struct Graph<'a> {
+    pub node: Vec<Node<'a>>,
+    pub name: &'a str,
+    pub initializer: Vec<TensorProto<'a>>,
+    pub sparse_initializer: Vec<SparseTensor<'a>>,
+    pub doc_string: &'a str,
+    pub input: Vec<ValueInfo<'a>>,
+    pub output: Vec<ValueInfo<'a>>,
+    pub value_info: Vec<ValueInfo<'a>>,
+    pub quantization_annotation: Vec<TensorAnnotation<'a>>,
+    pub metadata_props: Vec<StringStringEntry<'a>>,
 }
 
+/// A single operation in the computation graph.
+///
+/// Corresponds to `NodeProto` in the ONNX protobuf schema. Each node has an
+/// [`OpType`], consumes named inputs, produces named outputs, and may carry
+/// [`Attribute`]s that parameterize the operation.
+///
+/// # Examples
+///
+/// ```
+/// use onnx_rs::ast::*;
+///
+/// let node = Node {
+///     name: "conv_0",
+///     op_type: OpType::Conv,
+///     input: vec!["X", "W"],
+///     output: vec!["Y"],
+///     attribute: vec![Attribute {
+///         name: "kernel_shape",
+///         r#type: AttributeType::Ints,
+///         ints: vec![3, 3],
+///         ..Default::default()
+///     }],
+///     ..Default::default()
+/// };
+///
+/// assert_eq!(node.op_type, OpType::Conv);
+/// assert_eq!(node.attribute[0].ints, vec![3, 3]);
+/// ```
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct Node {
-    pub input: Vec<String>,
-    pub output: Vec<String>,
-    pub name: String,
-    pub op_type: OpType,
-    pub domain: String,
-    pub overload: String,
-    pub attribute: Vec<Attribute>,
-    pub doc_string: String,
-    pub metadata_props: Vec<StringStringEntry>,
+pub struct Node<'a> {
+    pub input: Vec<&'a str>,
+    pub output: Vec<&'a str>,
+    pub name: &'a str,
+    pub op_type: OpType<'a>,
+    pub domain: &'a str,
+    pub overload: &'a str,
+    pub attribute: Vec<Attribute<'a>>,
+    pub doc_string: &'a str,
+    pub metadata_props: Vec<StringStringEntry<'a>>,
 }
 
+/// ONNX operator type.
+///
+/// Contains variants for all standard ONNX operators. Unrecognized operator
+/// names are stored as [`OpType::Custom`].
+///
+/// # Examples
+///
+/// ```
+/// use onnx_rs::ast::OpType;
+///
+/// // Convert from a string
+/// let op = OpType::from("MatMul");
+/// assert_eq!(op, OpType::MatMul);
+///
+/// // Convert back to a string
+/// assert_eq!(op.as_str(), "MatMul");
+///
+/// // Unknown operators become Custom
+/// let custom = OpType::from("MyCustomOp");
+/// assert_eq!(custom, OpType::Custom("MyCustomOp"));
+/// assert_eq!(custom.as_str(), "MyCustomOp");
+///
+/// // Display works as expected
+/// assert_eq!(format!("{}", OpType::Relu), "Relu");
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum OpType {
+pub enum OpType<'a> {
     // Activation
     Relu,
     LeakyRelu,
@@ -289,16 +417,36 @@ pub enum OpType {
     StringConcat,
     StringSplit,
 
-    Custom(String),
+    Custom(&'a str),
 }
 
-impl Default for OpType {
-    fn default() -> Self {
-        OpType::Custom(String::new())
+impl OpType<'_> {
+    /// Returns the ONNX string name of this operator.
+    ///
+    /// For standard operators this returns the canonical name (e.g. `"Relu"`).
+    /// For [`OpType::Custom`] it returns the stored string.
+    ///
+    /// ```
+    /// use onnx_rs::ast::OpType;
+    ///
+    /// assert_eq!(OpType::Softmax.as_str(), "Softmax");
+    /// assert_eq!(OpType::Custom("FusedGelu").as_str(), "FusedGelu");
+    /// ```
+    pub fn as_str(&self) -> &str {
+        match self {
+            OpType::Custom(s) => s,
+            other => op_type_to_str(other),
+        }
     }
 }
 
-impl std::fmt::Display for OpType {
+impl Default for OpType<'_> {
+    fn default() -> Self {
+        OpType::Custom("")
+    }
+}
+
+impl std::fmt::Display for OpType<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             OpType::Custom(s) => write!(f, "{s}"),
@@ -307,8 +455,8 @@ impl std::fmt::Display for OpType {
     }
 }
 
-impl From<&str> for OpType {
-    fn from(s: &str) -> Self {
+impl<'a> From<&'a str> for OpType<'a> {
+    fn from(s: &'a str) -> Self {
         match s {
             "Relu" => OpType::Relu,
             "LeakyRelu" => OpType::LeakyRelu,
@@ -501,12 +649,12 @@ impl From<&str> for OpType {
             "RegexFullMatch" => OpType::RegexFullMatch,
             "StringConcat" => OpType::StringConcat,
             "StringSplit" => OpType::StringSplit,
-            other => OpType::Custom(other.to_string()),
+            other => OpType::Custom(other),
         }
     }
 }
 
-fn op_type_to_str(op: &OpType) -> &'static str {
+fn op_type_to_str(op: &OpType<'_>) -> &'static str {
     match op {
         OpType::Relu => "Relu",
         OpType::LeakyRelu => "LeakyRelu",
@@ -703,6 +851,25 @@ fn op_type_to_str(op: &OpType) -> &'static str {
     }
 }
 
+/// Element data type for tensors.
+///
+/// Corresponds to `TensorProto.DataType` in the ONNX protobuf schema.
+///
+/// # Examples
+///
+/// ```
+/// use onnx_rs::ast::DataType;
+///
+/// let dt = DataType::Float;
+/// assert_ne!(dt, DataType::Int32);
+///
+/// // Convert from protobuf integer values
+/// let dt = DataType::try_from(1).unwrap();
+/// assert_eq!(dt, DataType::Float);
+///
+/// // Invalid values produce an error
+/// assert!(DataType::try_from(999).is_err());
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DataType {
     #[default]
@@ -769,6 +936,9 @@ impl TryFrom<i32> for DataType {
     }
 }
 
+/// Discriminant for the kind of value stored in an [`Attribute`].
+///
+/// Corresponds to `AttributeProto.AttributeType` in the ONNX protobuf schema.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AttributeType {
     #[default]
@@ -817,6 +987,10 @@ impl TryFrom<i32> for AttributeType {
     }
 }
 
+/// Where tensor data is stored.
+///
+/// `Default` means inline in the protobuf; `External` means in a separate file
+/// referenced by [`TensorProto::external_data`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DataLocation {
     #[default]
@@ -839,160 +1013,279 @@ impl TryFrom<i32> for DataLocation {
     }
 }
 
+/// A single dimension in a tensor shape — either a fixed value or a symbolic parameter.
+///
+/// # Examples
+///
+/// ```
+/// use onnx_rs::ast::Dimension;
+///
+/// let fixed = Dimension::Value(224);
+/// let dynamic = Dimension::Param("batch_size");
+/// ```
 #[derive(Debug, Clone, PartialEq)]
-pub enum Dimension {
+pub enum Dimension<'a> {
     Value(i64),
-    Param(std::string::String),
+    Param(&'a str),
 }
 
-impl Default for Dimension {
+impl Default for Dimension<'_> {
     fn default() -> Self {
         Dimension::Value(0)
     }
 }
 
+/// A single dimension in a [`TensorShape`], combining a [`Dimension`] value with
+/// an optional denotation string.
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct TensorShapeDimension {
-    pub value: Dimension,
-    pub denotation: String,
+pub struct TensorShapeDimension<'a> {
+    pub value: Dimension<'a>,
+    pub denotation: &'a str,
 }
 
+/// The shape of a tensor, as a list of dimensions.
+///
+/// Corresponds to `TensorShapeProto` in the ONNX protobuf schema.
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct TensorShape {
-    pub dim: Vec<TensorShapeDimension>,
+pub struct TensorShape<'a> {
+    pub dim: Vec<TensorShapeDimension<'a>>,
 }
 
+/// Describes a tensor type with an element data type and optional shape.
+///
+/// Corresponds to `TypeProto.Tensor` in the ONNX protobuf schema.
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct TensorTypeProto {
+pub struct TensorTypeProto<'a> {
     pub elem_type: DataType,
-    pub shape: Option<TensorShape>,
+    pub shape: Option<TensorShape<'a>>,
 }
 
+/// Describes a sequence type whose elements have a given [`TypeProto`].
 #[derive(Debug, Clone, PartialEq)]
-pub struct SequenceTypeProto {
-    pub elem_type: Box<TypeProto>,
+pub struct SequenceTypeProto<'a> {
+    pub elem_type: Box<TypeProto<'a>>,
 }
 
+/// Describes a map type with a key [`DataType`] and a value [`TypeProto`].
 #[derive(Debug, Clone, PartialEq)]
-pub struct MapTypeProto {
+pub struct MapTypeProto<'a> {
     pub key_type: DataType,
-    pub value_type: Box<TypeProto>,
+    pub value_type: Box<TypeProto<'a>>,
 }
 
+/// Describes an optional type whose element has a given [`TypeProto`].
 #[derive(Debug, Clone, PartialEq)]
-pub struct OptionalTypeProto {
-    pub elem_type: Box<TypeProto>,
+pub struct OptionalTypeProto<'a> {
+    pub elem_type: Box<TypeProto<'a>>,
 }
 
+/// Describes a sparse tensor type with an element data type and optional shape.
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct SparseTensorTypeProto {
+pub struct SparseTensorTypeProto<'a> {
     pub elem_type: DataType,
-    pub shape: Option<TensorShape>,
+    pub shape: Option<TensorShape<'a>>,
 }
 
+/// The concrete type stored inside a [`TypeProto`].
 #[derive(Debug, Clone, PartialEq)]
-pub enum TypeValue {
-    Tensor(TensorTypeProto),
-    Sequence(SequenceTypeProto),
-    Map(MapTypeProto),
-    Optional(OptionalTypeProto),
-    SparseTensor(SparseTensorTypeProto),
+pub enum TypeValue<'a> {
+    Tensor(TensorTypeProto<'a>),
+    Sequence(SequenceTypeProto<'a>),
+    Map(MapTypeProto<'a>),
+    Optional(OptionalTypeProto<'a>),
+    SparseTensor(SparseTensorTypeProto<'a>),
 }
 
+/// Describes the type of a graph input, output, or intermediate value.
+///
+/// Corresponds to `TypeProto` in the ONNX protobuf schema. The [`value`](TypeProto::value)
+/// field holds the specific type variant (tensor, sequence, map, etc.).
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct TypeProto {
-    pub value: Option<TypeValue>,
-    pub denotation: String,
+pub struct TypeProto<'a> {
+    pub value: Option<TypeValue<'a>>,
+    pub denotation: &'a str,
 }
 
+/// Type and shape information for a graph input, output, or intermediate value.
+///
+/// Corresponds to `ValueInfoProto` in the ONNX protobuf schema.
+///
+/// # Examples
+///
+/// ```
+/// use onnx_rs::ast::*;
+///
+/// let vi = ValueInfo {
+///     name: "input_0",
+///     r#type: Some(TypeProto {
+///         value: Some(TypeValue::Tensor(TensorTypeProto {
+///             elem_type: DataType::Float,
+///             shape: Some(TensorShape {
+///                 dim: vec![
+///                     TensorShapeDimension {
+///                         value: Dimension::Param("batch"),
+///                         denotation: "",
+///                     },
+///                     TensorShapeDimension {
+///                         value: Dimension::Value(784),
+///                         denotation: "",
+///                     },
+///                 ],
+///             }),
+///         })),
+///         denotation: "",
+///     }),
+///     ..Default::default()
+/// };
+///
+/// assert_eq!(vi.name, "input_0");
+/// ```
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct ValueInfo {
-    pub name: String,
-    pub r#type: Option<TypeProto>,
-    pub doc_string: String,
-    pub metadata_props: Vec<StringStringEntry>,
+pub struct ValueInfo<'a> {
+    pub name: &'a str,
+    pub r#type: Option<TypeProto<'a>>,
+    pub doc_string: &'a str,
+    pub metadata_props: Vec<StringStringEntry<'a>>,
 }
 
+/// Byte range within a segmented tensor. Used for very large tensors that
+/// are split across multiple `TensorProto` messages.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct TensorSegment {
     pub begin: i64,
     pub end: i64,
 }
 
+/// An ONNX tensor value.
+///
+/// Corresponds to `TensorProto` in the ONNX protobuf schema. Tensor data
+/// can be stored in typed fields ([`float_data`](TensorProto::float_data),
+/// [`int32_data`](TensorProto::int32_data), etc.) or as
+/// [`raw_data`](TensorProto::raw_data) bytes.
+///
+/// # Examples
+///
+/// ```
+/// use onnx_rs::ast::*;
+///
+/// let tensor = TensorProto {
+///     name: "weights",
+///     dims: vec![2, 3],
+///     data_type: DataType::Float,
+///     float_data: vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+///     ..Default::default()
+/// };
+///
+/// assert_eq!(tensor.dims, vec![2, 3]);
+/// assert_eq!(tensor.float_data.len(), 6);
+/// ```
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct TensorProto {
+pub struct TensorProto<'a> {
     pub dims: Vec<i64>,
     pub data_type: DataType,
     pub segment: Option<TensorSegment>,
     pub float_data: Vec<f32>,
     pub int32_data: Vec<i32>,
-    pub string_data: Vec<Vec<u8>>,
+    pub string_data: Vec<&'a [u8]>,
     pub int64_data: Vec<i64>,
-    pub name: String,
-    pub raw_data: Vec<u8>,
+    pub name: &'a str,
+    pub raw_data: &'a [u8],
     pub double_data: Vec<f64>,
     pub uint64_data: Vec<u64>,
-    pub doc_string: String,
-    pub external_data: Vec<StringStringEntry>,
+    pub doc_string: &'a str,
+    pub external_data: Vec<StringStringEntry<'a>>,
     pub data_location: DataLocation,
-    pub metadata_props: Vec<StringStringEntry>,
+    pub metadata_props: Vec<StringStringEntry<'a>>,
 }
 
+/// A sparse tensor stored as separate values and indices tensors.
+///
+/// Corresponds to `SparseTensorProto` in the ONNX protobuf schema.
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct SparseTensor {
-    pub values: Option<TensorProto>,
-    pub indices: Option<TensorProto>,
+pub struct SparseTensor<'a> {
+    pub values: Option<TensorProto<'a>>,
+    pub indices: Option<TensorProto<'a>>,
     pub dims: Vec<i64>,
 }
 
+/// Quantization annotation for a tensor in the graph.
+///
+/// Corresponds to `TensorAnnotation` in the ONNX protobuf schema.
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct TensorAnnotation {
-    pub tensor_name: String,
-    pub quant_parameter_tensor_names: Vec<StringStringEntry>,
+pub struct TensorAnnotation<'a> {
+    pub tensor_name: &'a str,
+    pub quant_parameter_tensor_names: Vec<StringStringEntry<'a>>,
 }
 
+/// A named attribute on a graph [`Node`].
+///
+/// Corresponds to `AttributeProto` in the ONNX protobuf schema. The value is
+/// stored in whichever field matches the [`type`](Attribute::type) discriminant
+/// (e.g., `f` for floats, `i` for ints, `s` for byte strings).
+///
+/// # Examples
+///
+/// ```
+/// use onnx_rs::ast::*;
+///
+/// let attr = Attribute {
+///     name: "axis",
+///     r#type: AttributeType::Int,
+///     i: 1,
+///     ..Default::default()
+/// };
+///
+/// assert_eq!(attr.name, "axis");
+/// assert_eq!(attr.i, 1);
+/// ```
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct Attribute {
-    pub name: String,
-    pub ref_attr_name: String,
-    pub doc_string: String,
+pub struct Attribute<'a> {
+    pub name: &'a str,
+    pub ref_attr_name: &'a str,
+    pub doc_string: &'a str,
     pub r#type: AttributeType,
     pub f: f32,
     pub i: i64,
-    pub s: Vec<u8>,
-    pub t: Option<TensorProto>,
-    pub g: Option<Box<Graph>>,
-    pub sparse_tensor: Option<SparseTensor>,
-    pub tp: Option<TypeProto>,
+    pub s: &'a [u8],
+    pub t: Option<TensorProto<'a>>,
+    pub g: Option<Box<Graph<'a>>>,
+    pub sparse_tensor: Option<SparseTensor<'a>>,
+    pub tp: Option<TypeProto<'a>>,
     pub floats: Vec<f32>,
     pub ints: Vec<i64>,
-    pub strings: Vec<Vec<u8>>,
-    pub tensors: Vec<TensorProto>,
-    pub graphs: Vec<Graph>,
-    pub sparse_tensors: Vec<SparseTensor>,
-    pub type_protos: Vec<TypeProto>,
+    pub strings: Vec<&'a [u8]>,
+    pub tensors: Vec<TensorProto<'a>>,
+    pub graphs: Vec<Graph<'a>>,
+    pub sparse_tensors: Vec<SparseTensor<'a>>,
+    pub type_protos: Vec<TypeProto<'a>>,
 }
 
+/// Training-specific information attached to a model.
+///
+/// Corresponds to `TrainingInfoProto` in the ONNX protobuf schema.
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct TrainingInfo {
-    pub initialization: Option<Graph>,
-    pub algorithm: Option<Graph>,
-    pub initialization_binding: Vec<StringStringEntry>,
-    pub update_binding: Vec<StringStringEntry>,
+pub struct TrainingInfo<'a> {
+    pub initialization: Option<Graph<'a>>,
+    pub algorithm: Option<Graph<'a>>,
+    pub initialization_binding: Vec<StringStringEntry<'a>>,
+    pub update_binding: Vec<StringStringEntry<'a>>,
 }
 
+/// A reusable function definition within an ONNX model.
+///
+/// Corresponds to `FunctionProto` in the ONNX protobuf schema.
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct Function {
-    pub name: String,
-    pub input: Vec<String>,
-    pub output: Vec<String>,
-    pub attribute: Vec<String>,
-    pub attribute_proto: Vec<Attribute>,
-    pub node: Vec<Node>,
-    pub doc_string: String,
-    pub opset_import: Vec<OperatorSetId>,
-    pub domain: String,
-    pub overload: String,
-    pub value_info: Vec<ValueInfo>,
-    pub metadata_props: Vec<StringStringEntry>,
+pub struct Function<'a> {
+    pub name: &'a str,
+    pub input: Vec<&'a str>,
+    pub output: Vec<&'a str>,
+    pub attribute: Vec<&'a str>,
+    pub attribute_proto: Vec<Attribute<'a>>,
+    pub node: Vec<Node<'a>>,
+    pub doc_string: &'a str,
+    pub opset_import: Vec<OperatorSetId<'a>>,
+    pub domain: &'a str,
+    pub overload: &'a str,
+    pub value_info: Vec<ValueInfo<'a>>,
+    pub metadata_props: Vec<StringStringEntry<'a>>,
 }

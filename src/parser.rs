@@ -2,30 +2,63 @@ use crate::ast::*;
 use crate::error::Error;
 use crate::wire::{Cursor, WireType};
 
-pub fn parse(data: &[u8]) -> Result<Model, Error> {
+/// Parses ONNX protobuf bytes into a [`Model`].
+///
+/// The input should be the raw bytes of an `.onnx` file (a serialized
+/// `ModelProto` protobuf message). All string and byte-slice fields in the
+/// returned [`Model`] borrow directly from `data`, so no copies are made
+/// for those fields.
+///
+/// # Examples
+///
+/// ```
+/// use onnx_rs::ast::*;
+///
+/// let model = Model {
+///     ir_version: 9,
+///     producer_name: "test",
+///     ..Default::default()
+/// };
+/// let bytes = onnx_rs::encode(&model);
+///
+/// let parsed = onnx_rs::parse(&bytes).unwrap();
+/// assert_eq!(parsed.ir_version, 9);
+/// assert_eq!(parsed.producer_name, "test");
+/// ```
+///
+/// # Errors
+///
+/// Returns [`Error`] if the bytes contain invalid protobuf encoding,
+/// such as a truncated varint or an unrecognized wire type.
+///
+/// ```
+/// let result = onnx_rs::parse(&[0x08]);
+/// assert!(result.is_err());
+/// ```
+pub fn parse(data: &[u8]) -> Result<Model<'_>, Error> {
     let mut cursor = Cursor::new(data);
     parse_model(&mut cursor)
 }
 
-fn parse_string_string_entry(cursor: &mut Cursor) -> Result<StringStringEntry, Error> {
+fn parse_string_string_entry<'a>(cursor: &mut Cursor<'a>) -> Result<StringStringEntry<'a>, Error> {
     let mut entry = StringStringEntry::default();
     while !cursor.is_empty() {
         let (field, wire_type) = cursor.read_tag()?;
         match field {
-            1 => entry.key = cursor.read_string()?.to_string(),
-            2 => entry.value = cursor.read_string()?.to_string(),
+            1 => entry.key = cursor.read_string()?,
+            2 => entry.value = cursor.read_string()?,
             _ => cursor.skip_field(wire_type)?,
         }
     }
     Ok(entry)
 }
 
-fn parse_opset_id(cursor: &mut Cursor) -> Result<OperatorSetId, Error> {
+fn parse_opset_id<'a>(cursor: &mut Cursor<'a>) -> Result<OperatorSetId<'a>, Error> {
     let mut opset = OperatorSetId::default();
     while !cursor.is_empty() {
         let (field, wire_type) = cursor.read_tag()?;
         match field {
-            1 => opset.domain = cursor.read_string()?.to_string(),
+            1 => opset.domain = cursor.read_string()?,
             2 => opset.version = cursor.read_varint()? as i64,
             _ => cursor.skip_field(wire_type)?,
         }
@@ -33,21 +66,21 @@ fn parse_opset_id(cursor: &mut Cursor) -> Result<OperatorSetId, Error> {
     Ok(opset)
 }
 
-fn parse_tensor_shape_dim(cursor: &mut Cursor) -> Result<TensorShapeDimension, Error> {
+fn parse_tensor_shape_dim<'a>(cursor: &mut Cursor<'a>) -> Result<TensorShapeDimension<'a>, Error> {
     let mut dim = TensorShapeDimension::default();
     while !cursor.is_empty() {
         let (field, wire_type) = cursor.read_tag()?;
         match field {
             1 => dim.value = Dimension::Value(cursor.read_varint()? as i64),
-            2 => dim.value = Dimension::Param(cursor.read_string()?.to_string()),
-            3 => dim.denotation = cursor.read_string()?.to_string(),
+            2 => dim.value = Dimension::Param(cursor.read_string()?),
+            3 => dim.denotation = cursor.read_string()?,
             _ => cursor.skip_field(wire_type)?,
         }
     }
     Ok(dim)
 }
 
-fn parse_tensor_shape(cursor: &mut Cursor) -> Result<TensorShape, Error> {
+fn parse_tensor_shape<'a>(cursor: &mut Cursor<'a>) -> Result<TensorShape<'a>, Error> {
     let mut shape = TensorShape::default();
     while !cursor.is_empty() {
         let (field, wire_type) = cursor.read_tag()?;
@@ -62,7 +95,7 @@ fn parse_tensor_shape(cursor: &mut Cursor) -> Result<TensorShape, Error> {
     Ok(shape)
 }
 
-fn parse_tensor_type(cursor: &mut Cursor) -> Result<TensorTypeProto, Error> {
+fn parse_tensor_type<'a>(cursor: &mut Cursor<'a>) -> Result<TensorTypeProto<'a>, Error> {
     let mut tt = TensorTypeProto::default();
     while !cursor.is_empty() {
         let (field, wire_type) = cursor.read_tag()?;
@@ -78,7 +111,7 @@ fn parse_tensor_type(cursor: &mut Cursor) -> Result<TensorTypeProto, Error> {
     Ok(tt)
 }
 
-fn parse_sequence_type(cursor: &mut Cursor) -> Result<SequenceTypeProto, Error> {
+fn parse_sequence_type<'a>(cursor: &mut Cursor<'a>) -> Result<SequenceTypeProto<'a>, Error> {
     let mut elem_type = TypeProto::default();
     while !cursor.is_empty() {
         let (field, wire_type) = cursor.read_tag()?;
@@ -95,7 +128,7 @@ fn parse_sequence_type(cursor: &mut Cursor) -> Result<SequenceTypeProto, Error> 
     })
 }
 
-fn parse_map_type(cursor: &mut Cursor) -> Result<MapTypeProto, Error> {
+fn parse_map_type<'a>(cursor: &mut Cursor<'a>) -> Result<MapTypeProto<'a>, Error> {
     let mut key_type = DataType::default();
     let mut value_type = TypeProto::default();
     while !cursor.is_empty() {
@@ -115,7 +148,7 @@ fn parse_map_type(cursor: &mut Cursor) -> Result<MapTypeProto, Error> {
     })
 }
 
-fn parse_optional_type(cursor: &mut Cursor) -> Result<OptionalTypeProto, Error> {
+fn parse_optional_type<'a>(cursor: &mut Cursor<'a>) -> Result<OptionalTypeProto<'a>, Error> {
     let mut elem_type = TypeProto::default();
     while !cursor.is_empty() {
         let (field, wire_type) = cursor.read_tag()?;
@@ -132,7 +165,7 @@ fn parse_optional_type(cursor: &mut Cursor) -> Result<OptionalTypeProto, Error> 
     })
 }
 
-fn parse_sparse_tensor_type(cursor: &mut Cursor) -> Result<SparseTensorTypeProto, Error> {
+fn parse_sparse_tensor_type<'a>(cursor: &mut Cursor<'a>) -> Result<SparseTensorTypeProto<'a>, Error> {
     let mut st = SparseTensorTypeProto::default();
     while !cursor.is_empty() {
         let (field, wire_type) = cursor.read_tag()?;
@@ -148,7 +181,7 @@ fn parse_sparse_tensor_type(cursor: &mut Cursor) -> Result<SparseTensorTypeProto
     Ok(st)
 }
 
-fn parse_type_proto(cursor: &mut Cursor) -> Result<TypeProto, Error> {
+fn parse_type_proto<'a>(cursor: &mut Cursor<'a>) -> Result<TypeProto<'a>, Error> {
     let mut tp = TypeProto::default();
     while !cursor.is_empty() {
         let (field, wire_type) = cursor.read_tag()?;
@@ -165,7 +198,7 @@ fn parse_type_proto(cursor: &mut Cursor) -> Result<TypeProto, Error> {
                 let mut sub = cursor.read_sub_cursor()?;
                 tp.value = Some(TypeValue::Map(parse_map_type(&mut sub)?));
             }
-            6 => tp.denotation = cursor.read_string()?.to_string(),
+            6 => tp.denotation = cursor.read_string()?,
             8 => {
                 let mut sub = cursor.read_sub_cursor()?;
                 tp.value = Some(TypeValue::SparseTensor(parse_sparse_tensor_type(&mut sub)?));
@@ -180,17 +213,17 @@ fn parse_type_proto(cursor: &mut Cursor) -> Result<TypeProto, Error> {
     Ok(tp)
 }
 
-fn parse_value_info(cursor: &mut Cursor) -> Result<ValueInfo, Error> {
+fn parse_value_info<'a>(cursor: &mut Cursor<'a>) -> Result<ValueInfo<'a>, Error> {
     let mut vi = ValueInfo::default();
     while !cursor.is_empty() {
         let (field, wire_type) = cursor.read_tag()?;
         match field {
-            1 => vi.name = cursor.read_string()?.to_string(),
+            1 => vi.name = cursor.read_string()?,
             2 => {
                 let mut sub = cursor.read_sub_cursor()?;
                 vi.r#type = Some(parse_type_proto(&mut sub)?);
             }
-            3 => vi.doc_string = cursor.read_string()?.to_string(),
+            3 => vi.doc_string = cursor.read_string()?,
             4 => {
                 let mut sub = cursor.read_sub_cursor()?;
                 vi.metadata_props.push(parse_string_string_entry(&mut sub)?);
@@ -214,7 +247,7 @@ fn parse_tensor_segment(cursor: &mut Cursor) -> Result<TensorSegment, Error> {
     Ok(seg)
 }
 
-fn parse_tensor(cursor: &mut Cursor) -> Result<TensorProto, Error> {
+fn parse_tensor<'a>(cursor: &mut Cursor<'a>) -> Result<TensorProto<'a>, Error> {
     let mut t = TensorProto::default();
     while !cursor.is_empty() {
         let (field, wire_type) = cursor.read_tag()?;
@@ -260,7 +293,7 @@ fn parse_tensor(cursor: &mut Cursor) -> Result<TensorProto, Error> {
                 }
                 _ => t.int32_data.push(cursor.read_varint()? as i32),
             },
-            6 => t.string_data.push(cursor.read_bytes()?.to_vec()),
+            6 => t.string_data.push(cursor.read_bytes()?),
             7 => match wire_type {
                 WireType::LengthDelimited => {
                     let mut sub = cursor.read_sub_cursor()?;
@@ -271,8 +304,8 @@ fn parse_tensor(cursor: &mut Cursor) -> Result<TensorProto, Error> {
                 }
                 _ => t.int64_data.push(cursor.read_varint()? as i64),
             },
-            8 => t.name = cursor.read_string()?.to_string(),
-            9 => t.raw_data = cursor.read_bytes()?.to_vec(),
+            8 => t.name = cursor.read_string()?,
+            9 => t.raw_data = cursor.read_bytes()?,
             10 => match wire_type {
                 WireType::LengthDelimited => {
                     let sub = cursor.read_sub_cursor()?;
@@ -299,7 +332,7 @@ fn parse_tensor(cursor: &mut Cursor) -> Result<TensorProto, Error> {
                 }
                 _ => t.uint64_data.push(cursor.read_varint()?),
             },
-            12 => t.doc_string = cursor.read_string()?.to_string(),
+            12 => t.doc_string = cursor.read_string()?,
             13 => {
                 let mut sub = cursor.read_sub_cursor()?;
                 t.external_data.push(parse_string_string_entry(&mut sub)?);
@@ -315,7 +348,7 @@ fn parse_tensor(cursor: &mut Cursor) -> Result<TensorProto, Error> {
     Ok(t)
 }
 
-fn parse_sparse_tensor(cursor: &mut Cursor) -> Result<SparseTensor, Error> {
+fn parse_sparse_tensor<'a>(cursor: &mut Cursor<'a>) -> Result<SparseTensor<'a>, Error> {
     let mut st = SparseTensor::default();
     while !cursor.is_empty() {
         let (field, wire_type) = cursor.read_tag()?;
@@ -344,12 +377,12 @@ fn parse_sparse_tensor(cursor: &mut Cursor) -> Result<SparseTensor, Error> {
     Ok(st)
 }
 
-fn parse_tensor_annotation(cursor: &mut Cursor) -> Result<TensorAnnotation, Error> {
+fn parse_tensor_annotation<'a>(cursor: &mut Cursor<'a>) -> Result<TensorAnnotation<'a>, Error> {
     let mut ta = TensorAnnotation::default();
     while !cursor.is_empty() {
         let (field, wire_type) = cursor.read_tag()?;
         match field {
-            1 => ta.tensor_name = cursor.read_string()?.to_string(),
+            1 => ta.tensor_name = cursor.read_string()?,
             2 => {
                 let mut sub = cursor.read_sub_cursor()?;
                 ta.quant_parameter_tensor_names
@@ -361,17 +394,17 @@ fn parse_tensor_annotation(cursor: &mut Cursor) -> Result<TensorAnnotation, Erro
     Ok(ta)
 }
 
-fn parse_attribute(cursor: &mut Cursor) -> Result<Attribute, Error> {
+fn parse_attribute<'a>(cursor: &mut Cursor<'a>) -> Result<Attribute<'a>, Error> {
     let mut attr = Attribute::default();
     while !cursor.is_empty() {
         let (field, wire_type) = cursor.read_tag()?;
         match field {
-            1 => attr.name = cursor.read_string()?.to_string(),
+            1 => attr.name = cursor.read_string()?,
             2 => {
                 attr.f = cursor.read_f32_le()?;
             }
             3 => attr.i = cursor.read_varint()? as i64,
-            4 => attr.s = cursor.read_bytes()?.to_vec(),
+            4 => attr.s = cursor.read_bytes()?,
             5 => {
                 let mut sub = cursor.read_sub_cursor()?;
                 attr.t = Some(parse_tensor(&mut sub)?);
@@ -406,7 +439,7 @@ fn parse_attribute(cursor: &mut Cursor) -> Result<Attribute, Error> {
                 }
                 _ => attr.ints.push(cursor.read_varint()? as i64),
             },
-            9 => attr.strings.push(cursor.read_bytes()?.to_vec()),
+            9 => attr.strings.push(cursor.read_bytes()?),
             10 => {
                 let mut sub = cursor.read_sub_cursor()?;
                 attr.tensors.push(parse_tensor(&mut sub)?);
@@ -415,7 +448,7 @@ fn parse_attribute(cursor: &mut Cursor) -> Result<Attribute, Error> {
                 let mut sub = cursor.read_sub_cursor()?;
                 attr.graphs.push(parse_graph(&mut sub)?);
             }
-            13 => attr.doc_string = cursor.read_string()?.to_string(),
+            13 => attr.doc_string = cursor.read_string()?,
             14 => {
                 let mut sub = cursor.read_sub_cursor()?;
                 attr.tp = Some(parse_type_proto(&mut sub)?);
@@ -425,7 +458,7 @@ fn parse_attribute(cursor: &mut Cursor) -> Result<Attribute, Error> {
                 attr.type_protos.push(parse_type_proto(&mut sub)?);
             }
             20 => attr.r#type = AttributeType::try_from(cursor.read_varint()? as i32)?,
-            21 => attr.ref_attr_name = cursor.read_string()?.to_string(),
+            21 => attr.ref_attr_name = cursor.read_string()?,
             22 => {
                 let mut sub = cursor.read_sub_cursor()?;
                 attr.sparse_tensor = Some(parse_sparse_tensor(&mut sub)?);
@@ -440,22 +473,22 @@ fn parse_attribute(cursor: &mut Cursor) -> Result<Attribute, Error> {
     Ok(attr)
 }
 
-fn parse_node(cursor: &mut Cursor) -> Result<Node, Error> {
+fn parse_node<'a>(cursor: &mut Cursor<'a>) -> Result<Node<'a>, Error> {
     let mut node = Node::default();
     while !cursor.is_empty() {
         let (field, wire_type) = cursor.read_tag()?;
         match field {
-            1 => node.input.push(cursor.read_string()?.to_string()),
-            2 => node.output.push(cursor.read_string()?.to_string()),
-            3 => node.name = cursor.read_string()?.to_string(),
+            1 => node.input.push(cursor.read_string()?),
+            2 => node.output.push(cursor.read_string()?),
+            3 => node.name = cursor.read_string()?,
             4 => node.op_type = OpType::from(cursor.read_string()?),
             5 => {
                 let mut sub = cursor.read_sub_cursor()?;
                 node.attribute.push(parse_attribute(&mut sub)?);
             }
-            6 => node.doc_string = cursor.read_string()?.to_string(),
-            7 => node.domain = cursor.read_string()?.to_string(),
-            8 => node.overload = cursor.read_string()?.to_string(),
+            6 => node.doc_string = cursor.read_string()?,
+            7 => node.domain = cursor.read_string()?,
+            8 => node.overload = cursor.read_string()?,
             9 => {
                 let mut sub = cursor.read_sub_cursor()?;
                 node.metadata_props.push(parse_string_string_entry(&mut sub)?);
@@ -466,7 +499,7 @@ fn parse_node(cursor: &mut Cursor) -> Result<Node, Error> {
     Ok(node)
 }
 
-fn parse_graph(cursor: &mut Cursor) -> Result<Graph, Error> {
+fn parse_graph<'a>(cursor: &mut Cursor<'a>) -> Result<Graph<'a>, Error> {
     let mut graph = Graph::default();
     while !cursor.is_empty() {
         let (field, wire_type) = cursor.read_tag()?;
@@ -475,12 +508,12 @@ fn parse_graph(cursor: &mut Cursor) -> Result<Graph, Error> {
                 let mut sub = cursor.read_sub_cursor()?;
                 graph.node.push(parse_node(&mut sub)?);
             }
-            2 => graph.name = cursor.read_string()?.to_string(),
+            2 => graph.name = cursor.read_string()?,
             5 => {
                 let mut sub = cursor.read_sub_cursor()?;
                 graph.initializer.push(parse_tensor(&mut sub)?);
             }
-            10 => graph.doc_string = cursor.read_string()?.to_string(),
+            10 => graph.doc_string = cursor.read_string()?,
             11 => {
                 let mut sub = cursor.read_sub_cursor()?;
                 graph.input.push(parse_value_info(&mut sub)?);
@@ -511,7 +544,7 @@ fn parse_graph(cursor: &mut Cursor) -> Result<Graph, Error> {
     Ok(graph)
 }
 
-fn parse_training_info(cursor: &mut Cursor) -> Result<TrainingInfo, Error> {
+fn parse_training_info<'a>(cursor: &mut Cursor<'a>) -> Result<TrainingInfo<'a>, Error> {
     let mut ti = TrainingInfo::default();
     while !cursor.is_empty() {
         let (field, wire_type) = cursor.read_tag()?;
@@ -538,25 +571,25 @@ fn parse_training_info(cursor: &mut Cursor) -> Result<TrainingInfo, Error> {
     Ok(ti)
 }
 
-fn parse_function(cursor: &mut Cursor) -> Result<Function, Error> {
+fn parse_function<'a>(cursor: &mut Cursor<'a>) -> Result<Function<'a>, Error> {
     let mut func = Function::default();
     while !cursor.is_empty() {
         let (field, wire_type) = cursor.read_tag()?;
         match field {
-            1 => func.name = cursor.read_string()?.to_string(),
-            4 => func.input.push(cursor.read_string()?.to_string()),
-            5 => func.output.push(cursor.read_string()?.to_string()),
-            6 => func.attribute.push(cursor.read_string()?.to_string()),
+            1 => func.name = cursor.read_string()?,
+            4 => func.input.push(cursor.read_string()?),
+            5 => func.output.push(cursor.read_string()?),
+            6 => func.attribute.push(cursor.read_string()?),
             7 => {
                 let mut sub = cursor.read_sub_cursor()?;
                 func.node.push(parse_node(&mut sub)?);
             }
-            8 => func.doc_string = cursor.read_string()?.to_string(),
+            8 => func.doc_string = cursor.read_string()?,
             9 => {
                 let mut sub = cursor.read_sub_cursor()?;
                 func.opset_import.push(parse_opset_id(&mut sub)?);
             }
-            10 => func.domain = cursor.read_string()?.to_string(),
+            10 => func.domain = cursor.read_string()?,
             11 => {
                 let mut sub = cursor.read_sub_cursor()?;
                 func.attribute_proto.push(parse_attribute(&mut sub)?);
@@ -565,7 +598,7 @@ fn parse_function(cursor: &mut Cursor) -> Result<Function, Error> {
                 let mut sub = cursor.read_sub_cursor()?;
                 func.value_info.push(parse_value_info(&mut sub)?);
             }
-            13 => func.overload = cursor.read_string()?.to_string(),
+            13 => func.overload = cursor.read_string()?,
             14 => {
                 let mut sub = cursor.read_sub_cursor()?;
                 func.metadata_props.push(parse_string_string_entry(&mut sub)?);
@@ -576,17 +609,17 @@ fn parse_function(cursor: &mut Cursor) -> Result<Function, Error> {
     Ok(func)
 }
 
-fn parse_model(cursor: &mut Cursor) -> Result<Model, Error> {
+fn parse_model<'a>(cursor: &mut Cursor<'a>) -> Result<Model<'a>, Error> {
     let mut model = Model::default();
     while !cursor.is_empty() {
         let (field, wire_type) = cursor.read_tag()?;
         match field {
             1 => model.ir_version = cursor.read_varint()? as i64,
-            2 => model.producer_name = cursor.read_string()?.to_string(),
-            3 => model.producer_version = cursor.read_string()?.to_string(),
-            4 => model.domain = cursor.read_string()?.to_string(),
+            2 => model.producer_name = cursor.read_string()?,
+            3 => model.producer_version = cursor.read_string()?,
+            4 => model.domain = cursor.read_string()?,
             5 => model.model_version = cursor.read_varint()? as i64,
-            6 => model.doc_string = cursor.read_string()?.to_string(),
+            6 => model.doc_string = cursor.read_string()?,
             7 => {
                 let mut sub = cursor.read_sub_cursor()?;
                 model.graph = Some(parse_graph(&mut sub)?);

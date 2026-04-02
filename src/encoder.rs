@@ -1,6 +1,40 @@
 use crate::ast::*;
 
-pub fn encode(model: &Model) -> Vec<u8> {
+/// Encodes a [`Model`] into ONNX protobuf bytes.
+///
+/// The returned bytes are a valid serialized `ModelProto` protobuf message
+/// that can be written directly to a `.onnx` file.
+///
+/// # Examples
+///
+/// ```
+/// use onnx_rs::ast::*;
+///
+/// let model = Model {
+///     ir_version: 9,
+///     producer_name: "my-tool",
+///     producer_version: "1.0",
+///     ..Default::default()
+/// };
+///
+/// let bytes = onnx_rs::encode(&model);
+/// assert!(!bytes.is_empty());
+///
+/// // Roundtrips cleanly through parse
+/// let roundtrip = onnx_rs::parse(&bytes).unwrap();
+/// assert_eq!(roundtrip.ir_version, 9);
+/// assert_eq!(roundtrip.producer_name, "my-tool");
+/// ```
+///
+/// Writing to a file:
+///
+/// ```no_run
+/// # use onnx_rs::ast::*;
+/// # let model = Model::default();
+/// let bytes = onnx_rs::encode(&model);
+/// std::fs::write("output.onnx", &bytes).unwrap();
+/// ```
+pub fn encode(model: &Model<'_>) -> Vec<u8> {
     encode_model(model)
 }
 
@@ -81,21 +115,21 @@ fn write_fixed32_field(buf: &mut Vec<u8>, field_number: u32, value: u32) {
     buf.extend_from_slice(&value.to_le_bytes());
 }
 
-fn encode_string_string_entry(entry: &StringStringEntry) -> Vec<u8> {
+fn encode_string_string_entry(entry: &StringStringEntry<'_>) -> Vec<u8> {
     let mut buf = Vec::new();
     write_string_field(&mut buf, 1, &entry.key);
     write_string_field(&mut buf, 2, &entry.value);
     buf
 }
 
-fn encode_opset_id(opset: &OperatorSetId) -> Vec<u8> {
+fn encode_opset_id(opset: &OperatorSetId<'_>) -> Vec<u8> {
     let mut buf = Vec::new();
     write_string_field(&mut buf, 1, &opset.domain);
     write_varint_field(&mut buf, 2, opset.version as u64);
     buf
 }
 
-fn encode_tensor_shape_dim(dim: &TensorShapeDimension) -> Vec<u8> {
+fn encode_tensor_shape_dim(dim: &TensorShapeDimension<'_>) -> Vec<u8> {
     let mut buf = Vec::new();
     match &dim.value {
         Dimension::Value(v) => write_sint_field(&mut buf, 1, *v),
@@ -105,7 +139,7 @@ fn encode_tensor_shape_dim(dim: &TensorShapeDimension) -> Vec<u8> {
     buf
 }
 
-fn encode_tensor_shape(shape: &TensorShape) -> Vec<u8> {
+fn encode_tensor_shape(shape: &TensorShape<'_>) -> Vec<u8> {
     let mut buf = Vec::new();
     for dim in &shape.dim {
         let inner = encode_tensor_shape_dim(dim);
@@ -114,7 +148,7 @@ fn encode_tensor_shape(shape: &TensorShape) -> Vec<u8> {
     buf
 }
 
-fn encode_tensor_type(tt: &TensorTypeProto) -> Vec<u8> {
+fn encode_tensor_type(tt: &TensorTypeProto<'_>) -> Vec<u8> {
     let mut buf = Vec::new();
     write_varint_field(&mut buf, 1, tt.elem_type as u64);
     if let Some(shape) = &tt.shape {
@@ -124,7 +158,7 @@ fn encode_tensor_type(tt: &TensorTypeProto) -> Vec<u8> {
     buf
 }
 
-fn encode_type_proto(tp: &TypeProto) -> Vec<u8> {
+fn encode_type_proto(tp: &TypeProto<'_>) -> Vec<u8> {
     let mut buf = Vec::new();
     if let Some(value) = &tp.value {
         match value {
@@ -154,14 +188,14 @@ fn encode_type_proto(tp: &TypeProto) -> Vec<u8> {
     buf
 }
 
-fn encode_sequence_type(s: &SequenceTypeProto) -> Vec<u8> {
+fn encode_sequence_type(s: &SequenceTypeProto<'_>) -> Vec<u8> {
     let mut buf = Vec::new();
     let inner = encode_type_proto(&s.elem_type);
     write_message_field(&mut buf, 1, &inner);
     buf
 }
 
-fn encode_map_type(m: &MapTypeProto) -> Vec<u8> {
+fn encode_map_type(m: &MapTypeProto<'_>) -> Vec<u8> {
     let mut buf = Vec::new();
     write_varint_field(&mut buf, 1, m.key_type as u64);
     let inner = encode_type_proto(&m.value_type);
@@ -169,14 +203,14 @@ fn encode_map_type(m: &MapTypeProto) -> Vec<u8> {
     buf
 }
 
-fn encode_optional_type(o: &OptionalTypeProto) -> Vec<u8> {
+fn encode_optional_type(o: &OptionalTypeProto<'_>) -> Vec<u8> {
     let mut buf = Vec::new();
     let inner = encode_type_proto(&o.elem_type);
     write_message_field(&mut buf, 1, &inner);
     buf
 }
 
-fn encode_sparse_tensor_type(st: &SparseTensorTypeProto) -> Vec<u8> {
+fn encode_sparse_tensor_type(st: &SparseTensorTypeProto<'_>) -> Vec<u8> {
     let mut buf = Vec::new();
     write_varint_field(&mut buf, 1, st.elem_type as u64);
     if let Some(shape) = &st.shape {
@@ -186,7 +220,7 @@ fn encode_sparse_tensor_type(st: &SparseTensorTypeProto) -> Vec<u8> {
     buf
 }
 
-fn encode_value_info(vi: &ValueInfo) -> Vec<u8> {
+fn encode_value_info(vi: &ValueInfo<'_>) -> Vec<u8> {
     let mut buf = Vec::new();
     write_string_field(&mut buf, 1, &vi.name);
     if let Some(tp) = &vi.r#type {
@@ -208,7 +242,7 @@ fn encode_tensor_segment(seg: &TensorSegment) -> Vec<u8> {
     buf
 }
 
-fn encode_tensor(t: &TensorProto) -> Vec<u8> {
+fn encode_tensor(t: &TensorProto<'_>) -> Vec<u8> {
     let mut buf = Vec::new();
 
     if !t.dims.is_empty() {
@@ -304,7 +338,7 @@ fn encode_tensor(t: &TensorProto) -> Vec<u8> {
     buf
 }
 
-fn encode_sparse_tensor(st: &SparseTensor) -> Vec<u8> {
+fn encode_sparse_tensor(st: &SparseTensor<'_>) -> Vec<u8> {
     let mut buf = Vec::new();
     if let Some(values) = &st.values {
         let inner = encode_tensor(values);
@@ -326,7 +360,7 @@ fn encode_sparse_tensor(st: &SparseTensor) -> Vec<u8> {
     buf
 }
 
-fn encode_tensor_annotation(ta: &TensorAnnotation) -> Vec<u8> {
+fn encode_tensor_annotation(ta: &TensorAnnotation<'_>) -> Vec<u8> {
     let mut buf = Vec::new();
     write_string_field(&mut buf, 1, &ta.tensor_name);
     for entry in &ta.quant_parameter_tensor_names {
@@ -336,7 +370,7 @@ fn encode_tensor_annotation(ta: &TensorAnnotation) -> Vec<u8> {
     buf
 }
 
-fn encode_attribute(attr: &Attribute) -> Vec<u8> {
+fn encode_attribute(attr: &Attribute<'_>) -> Vec<u8> {
     let mut buf = Vec::new();
     write_string_field(&mut buf, 1, &attr.name);
     write_fixed32_field(&mut buf, 2, f32::to_bits(attr.f));
@@ -417,7 +451,7 @@ fn encode_attribute(attr: &Attribute) -> Vec<u8> {
     buf
 }
 
-fn encode_node(node: &Node) -> Vec<u8> {
+fn encode_node(node: &Node<'_>) -> Vec<u8> {
     let mut buf = Vec::new();
     for input in &node.input {
         write_string_field_always(&mut buf, 1, input);
@@ -426,7 +460,7 @@ fn encode_node(node: &Node) -> Vec<u8> {
         write_string_field_always(&mut buf, 2, output);
     }
     write_string_field(&mut buf, 3, &node.name);
-    write_string_field(&mut buf, 4, &node.op_type.to_string());
+    write_string_field(&mut buf, 4, node.op_type.as_str());
     for attr in &node.attribute {
         let inner = encode_attribute(attr);
         write_message_field(&mut buf, 5, &inner);
@@ -441,7 +475,7 @@ fn encode_node(node: &Node) -> Vec<u8> {
     buf
 }
 
-fn encode_graph(graph: &Graph) -> Vec<u8> {
+fn encode_graph(graph: &Graph<'_>) -> Vec<u8> {
     let mut buf = Vec::new();
     for node in &graph.node {
         let inner = encode_node(node);
@@ -480,7 +514,7 @@ fn encode_graph(graph: &Graph) -> Vec<u8> {
     buf
 }
 
-fn encode_training_info(ti: &TrainingInfo) -> Vec<u8> {
+fn encode_training_info(ti: &TrainingInfo<'_>) -> Vec<u8> {
     let mut buf = Vec::new();
     if let Some(init) = &ti.initialization {
         let inner = encode_graph(init);
@@ -501,7 +535,7 @@ fn encode_training_info(ti: &TrainingInfo) -> Vec<u8> {
     buf
 }
 
-fn encode_function(func: &Function) -> Vec<u8> {
+fn encode_function(func: &Function<'_>) -> Vec<u8> {
     let mut buf = Vec::new();
     write_string_field(&mut buf, 1, &func.name);
     for input in &func.input {
@@ -539,7 +573,7 @@ fn encode_function(func: &Function) -> Vec<u8> {
     buf
 }
 
-fn encode_model(model: &Model) -> Vec<u8> {
+fn encode_model(model: &Model<'_>) -> Vec<u8> {
     let mut buf = Vec::new();
     write_varint_field(&mut buf, 1, model.ir_version as u64);
     write_string_field(&mut buf, 2, &model.producer_name);
