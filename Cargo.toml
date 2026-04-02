@@ -2,6 +2,11 @@
 name = "onnx-rs"
 version = "0.1.0"
 edition = "2024"
+description = "Zero-dependency ONNX model parser in Rust"
+license = "MIT"
+repository = "https://github.com/universalmind303/onnx-rs"
+keywords = ["onnx", "parser", "protobuf", "machine-learning"]
+categories = ["parser-implementations", "science"]
 
 [dependencies]
 
