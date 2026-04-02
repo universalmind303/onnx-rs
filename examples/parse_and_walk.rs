@@ -120,7 +120,7 @@ fn format_type(tp: &Option<TypeProto>) -> String {
                             .iter()
                             .map(|d| match &d.value {
                                 Dimension::Value(v) => v.to_string(),
-                                Dimension::Param(p) => p.clone(),
+                                Dimension::Param(p) => p.to_string(),
                             })
                             .collect();
                         format!("[{}]", dims.join(", "))

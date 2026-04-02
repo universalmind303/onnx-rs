@@ -88,18 +88,13 @@ fn bench_parse_all_test_models(c: &mut Criterion) {
 }
 
 fn bench_encode(c: &mut Criterion) {
-    let models: Vec<(&str, _)> = ["test_relu", "test_conv_with_strides_padding", "test_if"]
-        .iter()
-        .map(|name| {
-            let data = load_test_model(name);
-            let model = parse(&data).unwrap();
-            (*name, model)
-        })
-        .collect();
+    let names = ["test_relu", "test_conv_with_strides_padding", "test_if"];
+    let data_vecs: Vec<Vec<u8>> = names.iter().map(|name| load_test_model(name)).collect();
 
     let mut group = c.benchmark_group("encode");
-    for (name, model) in &models {
-        group.bench_with_input(BenchmarkId::new("encode", name), model, |b, model| {
+    for (name, data) in names.iter().zip(data_vecs.iter()) {
+        let model = parse(data).unwrap();
+        group.bench_with_input(BenchmarkId::new("encode", name), &model, |b, model| {
             b.iter(|| {
                 let encoded = encode(model);
                 std::hint::black_box(encoded);

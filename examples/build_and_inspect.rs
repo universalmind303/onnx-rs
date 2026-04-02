@@ -4,21 +4,21 @@ fn main() {
     // Build a simple model AST by hand (shows the types without needing a .onnx file)
     let model = Model {
         ir_version: 8,
-        producer_name: "example".to_string(),
+        producer_name: "example",
         opset_import: vec![OperatorSetId {
-            domain: String::new(),
+            domain: "",
             version: 17,
         }],
         graph: Some(Graph {
-            name: "main".to_string(),
+            name: "main",
             node: vec![
                 Node {
-                    name: "conv1".to_string(),
+                    name: "conv1",
                     op_type: OpType::Conv,
-                    input: vec!["input".into(), "conv1.weight".into(), "conv1.bias".into()],
-                    output: vec!["conv1_out".into()],
+                    input: vec!["input", "conv1.weight", "conv1.bias"],
+                    output: vec!["conv1_out"],
                     attribute: vec![Attribute {
-                        name: "kernel_shape".to_string(),
+                        name: "kernel_shape",
                         r#type: AttributeType::Ints,
                         ints: vec![3, 3],
                         ..Default::default()
@@ -26,49 +26,49 @@ fn main() {
                     ..Default::default()
                 },
                 Node {
-                    name: "bn1".to_string(),
+                    name: "bn1",
                     op_type: OpType::BatchNormalization,
                     input: vec![
-                        "conv1_out".into(),
-                        "bn1.scale".into(),
-                        "bn1.bias".into(),
-                        "bn1.mean".into(),
-                        "bn1.var".into(),
+                        "conv1_out",
+                        "bn1.scale",
+                        "bn1.bias",
+                        "bn1.mean",
+                        "bn1.var",
                     ],
-                    output: vec!["bn1_out".into()],
+                    output: vec!["bn1_out"],
                     ..Default::default()
                 },
                 Node {
-                    name: "relu1".to_string(),
+                    name: "relu1",
                     op_type: OpType::Relu,
-                    input: vec!["bn1_out".into()],
-                    output: vec!["relu1_out".into()],
+                    input: vec!["bn1_out"],
+                    output: vec!["relu1_out"],
                     ..Default::default()
                 },
                 Node {
-                    name: "pool1".to_string(),
+                    name: "pool1",
                     op_type: OpType::GlobalAveragePool,
-                    input: vec!["relu1_out".into()],
-                    output: vec!["pool1_out".into()],
+                    input: vec!["relu1_out"],
+                    output: vec!["pool1_out"],
                     ..Default::default()
                 },
                 Node {
-                    name: "fc".to_string(),
+                    name: "fc",
                     op_type: OpType::Gemm,
-                    input: vec!["pool1_out".into(), "fc.weight".into(), "fc.bias".into()],
-                    output: vec!["output".into()],
+                    input: vec!["pool1_out", "fc.weight", "fc.bias"],
+                    output: vec!["output"],
                     ..Default::default()
                 },
             ],
             input: vec![ValueInfo {
-                name: "input".to_string(),
+                name: "input",
                 r#type: Some(TypeProto {
                     value: Some(TypeValue::Tensor(TensorTypeProto {
                         elem_type: DataType::Float,
                         shape: Some(TensorShape {
                             dim: vec![
                                 TensorShapeDimension {
-                                    value: Dimension::Param("batch".into()),
+                                    value: Dimension::Param("batch"),
                                     ..Default::default()
                                 },
                                 TensorShapeDimension {
@@ -91,14 +91,14 @@ fn main() {
                 ..Default::default()
             }],
             output: vec![ValueInfo {
-                name: "output".to_string(),
+                name: "output",
                 r#type: Some(TypeProto {
                     value: Some(TypeValue::Tensor(TensorTypeProto {
                         elem_type: DataType::Float,
                         shape: Some(TensorShape {
                             dim: vec![
                                 TensorShapeDimension {
-                                    value: Dimension::Param("batch".into()),
+                                    value: Dimension::Param("batch"),
                                     ..Default::default()
                                 },
                                 TensorShapeDimension {
@@ -150,7 +150,7 @@ fn main() {
     let target = "conv1_out";
     println!("\nConsumers of '{target}':");
     for node in &graph.node {
-        if node.input.iter().any(|i| i == target) {
+        if node.input.iter().any(|i| *i == target) {
             println!("  {} ({})", node.name, node.op_type);
         }
     }

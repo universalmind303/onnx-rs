@@ -13,11 +13,11 @@ fn test_roundtrip_empty_model() {
 fn test_roundtrip_model_scalars() {
     let model = Model {
         ir_version: 8,
-        producer_name: "onnx-rs".to_string(),
-        producer_version: "0.1.0".to_string(),
-        domain: "ai.onnx".to_string(),
+        producer_name: "onnx-rs",
+        producer_version: "0.1.0",
+        domain: "ai.onnx",
         model_version: 1,
-        doc_string: "a test model".to_string(),
+        doc_string: "a test model",
         ..Default::default()
     };
     let bytes = encode(&model);
@@ -31,11 +31,11 @@ fn test_roundtrip_opset_imports() {
         ir_version: 7,
         opset_import: vec![
             OperatorSetId {
-                domain: String::new(),
+                domain: "",
                 version: 13,
             },
             OperatorSetId {
-                domain: "ai.onnx.ml".to_string(),
+                domain: "ai.onnx.ml",
                 version: 3,
             },
         ],
@@ -51,12 +51,12 @@ fn test_roundtrip_metadata_props() {
     let model = Model {
         metadata_props: vec![
             StringStringEntry {
-                key: "author".to_string(),
-                value: "test".to_string(),
+                key: "author",
+                value: "test",
             },
             StringStringEntry {
-                key: "version".to_string(),
-                value: "1.0".to_string(),
+                key: "version",
+                value: "1.0",
             },
         ],
         ..Default::default()
@@ -71,24 +71,24 @@ fn test_roundtrip_simple_graph() {
     let model = Model {
         ir_version: 8,
         opset_import: vec![OperatorSetId {
-            domain: String::new(),
+            domain: "",
             version: 17,
         }],
         graph: Some(Graph {
-            name: "main".to_string(),
+            name: "main",
             node: vec![Node {
-                name: "relu0".to_string(),
+                name: "relu0",
                 op_type: OpType::Relu,
-                input: vec!["x".to_string()],
-                output: vec!["y".to_string()],
+                input: vec!["x"],
+                output: vec!["y"],
                 ..Default::default()
             }],
             input: vec![ValueInfo {
-                name: "x".to_string(),
+                name: "x",
                 ..Default::default()
             }],
             output: vec![ValueInfo {
-                name: "y".to_string(),
+                name: "y",
                 ..Default::default()
             }],
             ..Default::default()
@@ -106,37 +106,37 @@ fn test_roundtrip_node_with_attributes() {
         graph: Some(Graph {
             node: vec![Node {
                 op_type: OpType::Conv,
-                input: vec!["x".into(), "w".into(), "b".into()],
-                output: vec!["y".into()],
+                input: vec!["x", "w", "b"],
+                output: vec!["y"],
                 attribute: vec![
                     Attribute {
-                        name: "kernel_shape".to_string(),
+                        name: "kernel_shape",
                         r#type: AttributeType::Ints,
                         ints: vec![3, 3],
                         ..Default::default()
                     },
                     Attribute {
-                        name: "strides".to_string(),
+                        name: "strides",
                         r#type: AttributeType::Ints,
                         ints: vec![1, 1],
                         ..Default::default()
                     },
                     Attribute {
-                        name: "alpha".to_string(),
+                        name: "alpha",
                         r#type: AttributeType::Float,
                         f: 0.25,
                         ..Default::default()
                     },
                     Attribute {
-                        name: "axis".to_string(),
+                        name: "axis",
                         r#type: AttributeType::Int,
                         i: 1,
                         ..Default::default()
                     },
                     Attribute {
-                        name: "mode".to_string(),
+                        name: "mode",
                         r#type: AttributeType::String,
-                        s: b"constant".to_vec(),
+                        s: b"constant",
                         ..Default::default()
                     },
                 ],
@@ -156,15 +156,15 @@ fn test_roundtrip_value_info_with_tensor_type() {
     let model = Model {
         graph: Some(Graph {
             input: vec![ValueInfo {
-                name: "input".to_string(),
+                name: "input",
                 r#type: Some(TypeProto {
                     value: Some(TypeValue::Tensor(TensorTypeProto {
                         elem_type: DataType::Float,
                         shape: Some(TensorShape {
                             dim: vec![
                                 TensorShapeDimension {
-                                    value: Dimension::Param("batch".into()),
-                                    denotation: "DATA_BATCH".into(),
+                                    value: Dimension::Param("batch"),
+                                    denotation: "DATA_BATCH",
                                 },
                                 TensorShapeDimension {
                                     value: Dimension::Value(3),
@@ -181,7 +181,7 @@ fn test_roundtrip_value_info_with_tensor_type() {
                             ],
                         }),
                     })),
-                    denotation: "IMAGE".into(),
+                    denotation: "IMAGE",
                 }),
                 ..Default::default()
             }],
@@ -199,7 +199,7 @@ fn test_roundtrip_sequence_type() {
     let model = Model {
         graph: Some(Graph {
             input: vec![ValueInfo {
-                name: "seq".to_string(),
+                name: "seq",
                 r#type: Some(TypeProto {
                     value: Some(TypeValue::Sequence(SequenceTypeProto {
                         elem_type: Box::new(TypeProto {
@@ -228,7 +228,7 @@ fn test_roundtrip_map_type() {
     let model = Model {
         graph: Some(Graph {
             input: vec![ValueInfo {
-                name: "m".to_string(),
+                name: "m",
                 r#type: Some(TypeProto {
                     value: Some(TypeValue::Map(MapTypeProto {
                         key_type: DataType::String,
@@ -258,7 +258,7 @@ fn test_roundtrip_tensor_proto_float_data() {
     let model = Model {
         graph: Some(Graph {
             initializer: vec![TensorProto {
-                name: "weight".to_string(),
+                name: "weight",
                 dims: vec![2, 3],
                 data_type: DataType::Float,
                 float_data: vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
@@ -282,10 +282,10 @@ fn test_roundtrip_tensor_proto_raw_data() {
     let model = Model {
         graph: Some(Graph {
             initializer: vec![TensorProto {
-                name: "w".to_string(),
+                name: "w",
                 dims: vec![3],
                 data_type: DataType::Float,
-                raw_data: raw,
+                raw_data: &raw,
                 ..Default::default()
             }],
             ..Default::default()
@@ -302,7 +302,7 @@ fn test_roundtrip_tensor_proto_int64_data() {
     let model = Model {
         graph: Some(Graph {
             initializer: vec![TensorProto {
-                name: "indices".to_string(),
+                name: "indices",
                 dims: vec![4],
                 data_type: DataType::Int64,
                 int64_data: vec![10, 20, 30, 40],
@@ -322,7 +322,7 @@ fn test_roundtrip_tensor_proto_double_data() {
     let model = Model {
         graph: Some(Graph {
             initializer: vec![TensorProto {
-                name: "d".to_string(),
+                name: "d",
                 data_type: DataType::Double,
                 double_data: vec![3.14, 2.718],
                 ..Default::default()
@@ -341,9 +341,9 @@ fn test_roundtrip_tensor_proto_string_data() {
     let model = Model {
         graph: Some(Graph {
             initializer: vec![TensorProto {
-                name: "labels".to_string(),
+                name: "labels",
                 data_type: DataType::String,
-                string_data: vec![b"cat".to_vec(), b"dog".to_vec()],
+                string_data: vec![b"cat", b"dog"],
                 ..Default::default()
             }],
             ..Default::default()
@@ -386,20 +386,20 @@ fn test_roundtrip_training_info() {
     let model = Model {
         training_info: vec![TrainingInfo {
             initialization: Some(Graph {
-                name: "init".to_string(),
+                name: "init",
                 ..Default::default()
             }),
             algorithm: Some(Graph {
-                name: "train_step".to_string(),
+                name: "train_step",
                 ..Default::default()
             }),
             initialization_binding: vec![StringStringEntry {
-                key: "a".to_string(),
-                value: "b".to_string(),
+                key: "a",
+                value: "b",
             }],
             update_binding: vec![StringStringEntry {
-                key: "c".to_string(),
-                value: "d".to_string(),
+                key: "c",
+                value: "d",
             }],
         }],
         ..Default::default()
@@ -413,19 +413,19 @@ fn test_roundtrip_training_info() {
 fn test_roundtrip_function() {
     let model = Model {
         functions: vec![Function {
-            name: "MyFunc".to_string(),
-            domain: "com.test".to_string(),
-            input: vec!["x".into()],
-            output: vec!["y".into()],
-            attribute: vec!["alpha".into()],
+            name: "MyFunc",
+            domain: "com.test",
+            input: vec!["x"],
+            output: vec!["y"],
+            attribute: vec!["alpha"],
             node: vec![Node {
                 op_type: OpType::Relu,
-                input: vec!["x".into()],
-                output: vec!["y".into()],
+                input: vec!["x"],
+                output: vec!["y"],
                 ..Default::default()
             }],
             opset_import: vec![OperatorSetId {
-                domain: String::new(),
+                domain: "",
                 version: 17,
             }],
             ..Default::default()
@@ -442,15 +442,15 @@ fn test_roundtrip_node_domain_overload() {
     let model = Model {
         graph: Some(Graph {
             node: vec![Node {
-                op_type: OpType::Custom("MyOp".to_string()),
-                domain: "com.vendor".to_string(),
-                overload: "v2".to_string(),
-                doc_string: "a custom op".to_string(),
-                input: vec!["in".into()],
-                output: vec!["out".into()],
+                op_type: OpType::Custom("MyOp"),
+                domain: "com.vendor",
+                overload: "v2",
+                doc_string: "a custom op",
+                input: vec!["in"],
+                output: vec!["out"],
                 metadata_props: vec![StringStringEntry {
-                    key: "k".into(),
-                    value: "v".into(),
+                    key: "k",
+                    value: "v",
                 }],
                 ..Default::default()
             }],
@@ -468,9 +468,9 @@ fn test_roundtrip_attribute_floats() {
     let model = Model {
         graph: Some(Graph {
             node: vec![Node {
-                op_type: OpType::Custom("Op".into()),
+                op_type: OpType::Custom("Op"),
                 attribute: vec![Attribute {
-                    name: "scales".into(),
+                    name: "scales",
                     r#type: AttributeType::Floats,
                     floats: vec![0.5, 1.0, 1.5],
                     ..Default::default()
@@ -491,11 +491,11 @@ fn test_roundtrip_attribute_strings() {
     let model = Model {
         graph: Some(Graph {
             node: vec![Node {
-                op_type: OpType::Custom("Op".into()),
+                op_type: OpType::Custom("Op"),
                 attribute: vec![Attribute {
-                    name: "labels".into(),
+                    name: "labels",
                     r#type: AttributeType::Strings,
-                    strings: vec![b"a".to_vec(), b"b".to_vec(), b"c".to_vec()],
+                    strings: vec![b"a", b"b", b"c"],
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -516,7 +516,7 @@ fn test_roundtrip_attribute_tensor() {
             node: vec![Node {
                 op_type: OpType::Constant,
                 attribute: vec![Attribute {
-                    name: "value".into(),
+                    name: "value",
                     r#type: AttributeType::Tensor,
                     t: Some(TensorProto {
                         dims: vec![2, 2],
@@ -544,14 +544,14 @@ fn test_roundtrip_attribute_graph() {
             node: vec![Node {
                 op_type: OpType::If,
                 attribute: vec![Attribute {
-                    name: "then_branch".into(),
+                    name: "then_branch",
                     r#type: AttributeType::Graph,
                     g: Some(Box::new(Graph {
-                        name: "then".into(),
+                        name: "then",
                         node: vec![Node {
                             op_type: OpType::Identity,
-                            input: vec!["x".into()],
-                            output: vec!["y".into()],
+                            input: vec!["x"],
+                            output: vec!["y"],
                             ..Default::default()
                         }],
                         ..Default::default()
@@ -574,21 +574,21 @@ fn test_roundtrip_tensor_external_data() {
     let model = Model {
         graph: Some(Graph {
             initializer: vec![TensorProto {
-                name: "ext".to_string(),
+                name: "ext",
                 data_type: DataType::Float,
                 data_location: DataLocation::External,
                 external_data: vec![
                     StringStringEntry {
-                        key: "location".into(),
-                        value: "weights.bin".into(),
+                        key: "location",
+                        value: "weights.bin",
                     },
                     StringStringEntry {
-                        key: "offset".into(),
-                        value: "0".into(),
+                        key: "offset",
+                        value: "0",
                     },
                     StringStringEntry {
-                        key: "length".into(),
-                        value: "1024".into(),
+                        key: "length",
+                        value: "1024",
                     },
                 ],
                 ..Default::default()

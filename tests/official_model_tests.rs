@@ -8,10 +8,9 @@ fn test_data_dir() -> PathBuf {
         .join("data")
 }
 
-fn parse_model_file(name: &str) -> Model {
+fn load_model_bytes(name: &str) -> Vec<u8> {
     let path = test_data_dir().join(format!("{name}.onnx"));
-    let bytes = std::fs::read(&path).unwrap_or_else(|e| panic!("failed to read {}: {e}", path.display()));
-    parse(&bytes).unwrap_or_else(|e| panic!("failed to parse {name}: {e}"))
+    std::fs::read(&path).unwrap_or_else(|e| panic!("failed to read {}: {e}", path.display()))
 }
 
 fn roundtrip_model_file(name: &str) {
@@ -103,7 +102,8 @@ fn test_roundtrip_all_official_models() {
 
 #[test]
 fn test_official_relu() {
-    let model = parse_model_file("test_relu");
+    let bytes = load_model_bytes("test_relu");
+    let model = parse(&bytes).unwrap();
     assert!(model.ir_version > 0);
     assert!(!model.opset_import.is_empty());
     let g = model.graph.as_ref().unwrap();
@@ -116,7 +116,8 @@ fn test_official_relu() {
 
 #[test]
 fn test_official_add() {
-    let model = parse_model_file("test_add");
+    let bytes = load_model_bytes("test_add");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node.len(), 1);
     assert_eq!(g.node[0].op_type, OpType::Add);
@@ -126,7 +127,8 @@ fn test_official_add() {
 
 #[test]
 fn test_official_conv() {
-    let model = parse_model_file("test_basic_conv_without_padding");
+    let bytes = load_model_bytes("test_basic_conv_without_padding");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::Conv);
     roundtrip_model_file("test_basic_conv_without_padding");
@@ -134,7 +136,8 @@ fn test_official_conv() {
 
 #[test]
 fn test_official_conv_strides() {
-    let model = parse_model_file("test_conv_with_strides_padding");
+    let bytes = load_model_bytes("test_conv_with_strides_padding");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     let node = &g.node[0];
     assert_eq!(node.op_type, OpType::Conv);
@@ -147,7 +150,8 @@ fn test_official_conv_strides() {
 
 #[test]
 fn test_official_batchnorm() {
-    let model = parse_model_file("test_batchnorm_epsilon");
+    let bytes = load_model_bytes("test_batchnorm_epsilon");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::BatchNormalization);
     let epsilon = g.node[0].attribute.iter().find(|a| a.name == "epsilon").unwrap();
@@ -157,7 +161,8 @@ fn test_official_batchnorm() {
 
 #[test]
 fn test_official_concat() {
-    let model = parse_model_file("test_concat_1d_axis_0");
+    let bytes = load_model_bytes("test_concat_1d_axis_0");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::Concat);
     let axis = g.node[0].attribute.iter().find(|a| a.name == "axis").unwrap();
@@ -167,7 +172,8 @@ fn test_official_concat() {
 
 #[test]
 fn test_official_constant() {
-    let model = parse_model_file("test_constant");
+    let bytes = load_model_bytes("test_constant");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::Constant);
     let value_attr = g.node[0].attribute.iter().find(|a| a.name == "value").unwrap();
@@ -177,7 +183,8 @@ fn test_official_constant() {
 
 #[test]
 fn test_official_gemm() {
-    let model = parse_model_file("test_gemm_default_no_bias");
+    let bytes = load_model_bytes("test_gemm_default_no_bias");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::Gemm);
     roundtrip_model_file("test_gemm_default_no_bias");
@@ -185,7 +192,8 @@ fn test_official_gemm() {
 
 #[test]
 fn test_official_matmul() {
-    let model = parse_model_file("test_matmul_2d");
+    let bytes = load_model_bytes("test_matmul_2d");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::MatMul);
     roundtrip_model_file("test_matmul_2d");
@@ -193,7 +201,8 @@ fn test_official_matmul() {
 
 #[test]
 fn test_official_lstm() {
-    let model = parse_model_file("test_lstm_defaults");
+    let bytes = load_model_bytes("test_lstm_defaults");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::LSTM);
     roundtrip_model_file("test_lstm_defaults");
@@ -201,7 +210,8 @@ fn test_official_lstm() {
 
 #[test]
 fn test_official_gru() {
-    let model = parse_model_file("test_gru_defaults");
+    let bytes = load_model_bytes("test_gru_defaults");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::GRU);
     roundtrip_model_file("test_gru_defaults");
@@ -209,7 +219,8 @@ fn test_official_gru() {
 
 #[test]
 fn test_official_rnn() {
-    let model = parse_model_file("test_rnn_seq_length");
+    let bytes = load_model_bytes("test_rnn_seq_length");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::RNN);
     roundtrip_model_file("test_rnn_seq_length");
@@ -217,7 +228,8 @@ fn test_official_rnn() {
 
 #[test]
 fn test_official_if() {
-    let model = parse_model_file("test_if");
+    let bytes = load_model_bytes("test_if");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::If);
     let then_attr = g.node[0].attribute.iter().find(|a| a.name == "then_branch").unwrap();
@@ -229,7 +241,8 @@ fn test_official_if() {
 
 #[test]
 fn test_official_loop() {
-    let model = parse_model_file("test_loop11");
+    let bytes = load_model_bytes("test_loop11");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::Loop);
     let body_attr = g.node[0].attribute.iter().find(|a| a.name == "body").unwrap();
@@ -239,7 +252,8 @@ fn test_official_loop() {
 
 #[test]
 fn test_official_scan() {
-    let model = parse_model_file("test_scan_sum");
+    let bytes = load_model_bytes("test_scan_sum");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::Scan);
     let body_attr = g.node[0].attribute.iter().find(|a| a.name == "body").unwrap();
@@ -249,7 +263,8 @@ fn test_official_scan() {
 
 #[test]
 fn test_official_reshape() {
-    let model = parse_model_file("test_reshape_extended_dims");
+    let bytes = load_model_bytes("test_reshape_extended_dims");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::Reshape);
     roundtrip_model_file("test_reshape_extended_dims");
@@ -257,7 +272,8 @@ fn test_official_reshape() {
 
 #[test]
 fn test_official_transpose() {
-    let model = parse_model_file("test_transpose_default");
+    let bytes = load_model_bytes("test_transpose_default");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::Transpose);
     roundtrip_model_file("test_transpose_default");
@@ -265,7 +281,8 @@ fn test_official_transpose() {
 
 #[test]
 fn test_official_softmax() {
-    let model = parse_model_file("test_softmax_axis_0");
+    let bytes = load_model_bytes("test_softmax_axis_0");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::Softmax);
     roundtrip_model_file("test_softmax_axis_0");
@@ -273,7 +290,8 @@ fn test_official_softmax() {
 
 #[test]
 fn test_official_maxpool() {
-    let model = parse_model_file("test_maxpool_2d_default");
+    let bytes = load_model_bytes("test_maxpool_2d_default");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::MaxPool);
     roundtrip_model_file("test_maxpool_2d_default");
@@ -281,7 +299,8 @@ fn test_official_maxpool() {
 
 #[test]
 fn test_official_averagepool() {
-    let model = parse_model_file("test_averagepool_2d_default");
+    let bytes = load_model_bytes("test_averagepool_2d_default");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::AveragePool);
     roundtrip_model_file("test_averagepool_2d_default");
@@ -289,7 +308,8 @@ fn test_official_averagepool() {
 
 #[test]
 fn test_official_flatten() {
-    let model = parse_model_file("test_flatten_axis0");
+    let bytes = load_model_bytes("test_flatten_axis0");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::Flatten);
     roundtrip_model_file("test_flatten_axis0");
@@ -297,7 +317,8 @@ fn test_official_flatten() {
 
 #[test]
 fn test_official_gather() {
-    let model = parse_model_file("test_gather_0");
+    let bytes = load_model_bytes("test_gather_0");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::Gather);
     roundtrip_model_file("test_gather_0");
@@ -305,7 +326,8 @@ fn test_official_gather() {
 
 #[test]
 fn test_official_scatter_elements() {
-    let model = parse_model_file("test_scatter_elements_with_axis");
+    let bytes = load_model_bytes("test_scatter_elements_with_axis");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::ScatterElements);
     roundtrip_model_file("test_scatter_elements_with_axis");
@@ -313,7 +335,8 @@ fn test_official_scatter_elements() {
 
 #[test]
 fn test_official_reduce_mean() {
-    let model = parse_model_file("test_reduce_mean_default_axes_keepdims_example");
+    let bytes = load_model_bytes("test_reduce_mean_default_axes_keepdims_example");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::ReduceMean);
     roundtrip_model_file("test_reduce_mean_default_axes_keepdims_example");
@@ -321,7 +344,8 @@ fn test_official_reduce_mean() {
 
 #[test]
 fn test_official_dropout() {
-    let model = parse_model_file("test_dropout_default");
+    let bytes = load_model_bytes("test_dropout_default");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::Dropout);
     roundtrip_model_file("test_dropout_default");
@@ -329,7 +353,8 @@ fn test_official_dropout() {
 
 #[test]
 fn test_official_cast() {
-    let model = parse_model_file("test_cast_FLOAT_to_DOUBLE");
+    let bytes = load_model_bytes("test_cast_FLOAT_to_DOUBLE");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::Cast);
     roundtrip_model_file("test_cast_FLOAT_to_DOUBLE");
@@ -337,7 +362,8 @@ fn test_official_cast() {
 
 #[test]
 fn test_official_where() {
-    let model = parse_model_file("test_where_example");
+    let bytes = load_model_bytes("test_where_example");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::Where);
     roundtrip_model_file("test_where_example");
@@ -345,7 +371,8 @@ fn test_official_where() {
 
 #[test]
 fn test_official_resize() {
-    let model = parse_model_file("test_resize_upsample_scales_nearest");
+    let bytes = load_model_bytes("test_resize_upsample_scales_nearest");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::Resize);
     roundtrip_model_file("test_resize_upsample_scales_nearest");
@@ -353,7 +380,8 @@ fn test_official_resize() {
 
 #[test]
 fn test_official_quantize_linear() {
-    let model = parse_model_file("test_quantizelinear");
+    let bytes = load_model_bytes("test_quantizelinear");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::QuantizeLinear);
     roundtrip_model_file("test_quantizelinear");
@@ -361,7 +389,8 @@ fn test_official_quantize_linear() {
 
 #[test]
 fn test_official_dequantize_linear() {
-    let model = parse_model_file("test_dequantizelinear");
+    let bytes = load_model_bytes("test_dequantizelinear");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::DequantizeLinear);
     roundtrip_model_file("test_dequantizelinear");
@@ -369,7 +398,8 @@ fn test_official_dequantize_linear() {
 
 #[test]
 fn test_official_convtranspose() {
-    let model = parse_model_file("test_convtranspose");
+    let bytes = load_model_bytes("test_convtranspose");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::ConvTranspose);
     roundtrip_model_file("test_convtranspose");
@@ -377,7 +407,8 @@ fn test_official_convtranspose() {
 
 #[test]
 fn test_official_slice() {
-    let model = parse_model_file("test_slice");
+    let bytes = load_model_bytes("test_slice");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::Slice);
     roundtrip_model_file("test_slice");
@@ -389,7 +420,8 @@ fn test_official_pad() {
     if !path.exists() {
         return;
     }
-    let model = parse_model_file("test_pad_constant");
+    let bytes = load_model_bytes("test_pad_constant");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::Pad);
     roundtrip_model_file("test_pad_constant");
@@ -401,7 +433,8 @@ fn test_official_split() {
     if !path.exists() {
         return; // model not available
     }
-    let model = parse_model_file("test_split_equal_parts_1d");
+    let bytes = load_model_bytes("test_split_equal_parts_1d");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::Split);
     roundtrip_model_file("test_split_equal_parts_1d");
@@ -409,7 +442,8 @@ fn test_official_split() {
 
 #[test]
 fn test_official_erf() {
-    let model = parse_model_file("test_erf");
+    let bytes = load_model_bytes("test_erf");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::Erf);
     roundtrip_model_file("test_erf");
@@ -417,7 +451,8 @@ fn test_official_erf() {
 
 #[test]
 fn test_official_gelu() {
-    let model = parse_model_file("test_gelu_default_1");
+    let bytes = load_model_bytes("test_gelu_default_1");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::Gelu);
     roundtrip_model_file("test_gelu_default_1");
@@ -429,7 +464,8 @@ fn test_official_layer_norm() {
     if !path.exists() {
         return;
     }
-    let model = parse_model_file("test_layernormalization_2d_axis0");
+    let bytes = load_model_bytes("test_layernormalization_2d_axis0");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::LayerNormalization);
     roundtrip_model_file("test_layernormalization_2d_axis0");
@@ -441,7 +477,8 @@ fn test_official_optional_has_element() {
     if !path.exists() {
         return;
     }
-    let model = parse_model_file("test_optional_has_element");
+    let bytes = load_model_bytes("test_optional_has_element");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::OptionalHasElement);
     roundtrip_model_file("test_optional_has_element");
@@ -449,7 +486,8 @@ fn test_official_optional_has_element() {
 
 #[test]
 fn test_official_optional_get_element() {
-    let model = parse_model_file("test_optional_get_element_sequence");
+    let bytes = load_model_bytes("test_optional_get_element_sequence");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert_eq!(g.node[0].op_type, OpType::OptionalGetElement);
     roundtrip_model_file("test_optional_get_element_sequence");
@@ -457,7 +495,8 @@ fn test_official_optional_get_element() {
 
 #[test]
 fn test_official_sequence() {
-    let model = parse_model_file("test_sequence_model1");
+    let bytes = load_model_bytes("test_sequence_model1");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert!(!g.node.is_empty());
     roundtrip_model_file("test_sequence_model1");
@@ -465,7 +504,8 @@ fn test_official_sequence() {
 
 #[test]
 fn test_official_single_relu_model() {
-    let model = parse_model_file("test_single_relu_model");
+    let bytes = load_model_bytes("test_single_relu_model");
+    let model = parse(&bytes).unwrap();
     let g = model.graph.as_ref().unwrap();
     assert!(!g.node.is_empty());
     assert!(!g.input.is_empty());
@@ -489,7 +529,8 @@ fn test_official_trig_ops() {
         ("test_acosh", OpType::Acosh),
         ("test_atanh", OpType::Atanh),
     ] {
-        let model = parse_model_file(name);
+        let bytes = load_model_bytes(name);
+        let model = parse(&bytes).unwrap();
         let g = model.graph.as_ref().unwrap();
         assert_eq!(g.node[0].op_type, expected, "op mismatch for {name}");
         roundtrip_model_file(name);
@@ -516,7 +557,8 @@ fn test_official_math_ops() {
         ("test_reciprocal_example", OpType::Reciprocal),
         ("test_sign", OpType::Sign),
     ] {
-        let model = parse_model_file(name);
+        let bytes = load_model_bytes(name);
+        let model = parse(&bytes).unwrap();
         let g = model.graph.as_ref().unwrap();
         assert_eq!(g.node[0].op_type, expected, "op mismatch for {name}");
         roundtrip_model_file(name);
@@ -540,7 +582,8 @@ fn test_official_activation_ops() {
         ("test_thresholdedrelu_example", OpType::ThresholdedRelu),
         ("test_mish", OpType::Mish),
     ] {
-        let model = parse_model_file(name);
+        let bytes = load_model_bytes(name);
+        let model = parse(&bytes).unwrap();
         let g = model.graph.as_ref().unwrap();
         assert_eq!(g.node[0].op_type, expected, "op mismatch for {name}");
         roundtrip_model_file(name);
@@ -562,7 +605,8 @@ fn test_official_comparison_ops() {
         ("test_xor_bcast3v1d", OpType::Xor),
         ("test_isinf", OpType::IsInf),
     ] {
-        let model = parse_model_file(name);
+        let bytes = load_model_bytes(name);
+        let model = parse(&bytes).unwrap();
         let g = model.graph.as_ref().unwrap();
         assert_eq!(g.node[0].op_type, expected, "op mismatch for {name}");
         roundtrip_model_file(name);
@@ -586,7 +630,8 @@ fn test_official_reduce_ops() {
         ("test_argmax_default_axis_example", OpType::ArgMax),
         ("test_argmin_default_axis_example", OpType::ArgMin),
     ] {
-        let model = parse_model_file(name);
+        let bytes = load_model_bytes(name);
+        let model = parse(&bytes).unwrap();
         let g = model.graph.as_ref().unwrap();
         assert_eq!(g.node[0].op_type, expected, "op mismatch for {name}");
         roundtrip_model_file(name);

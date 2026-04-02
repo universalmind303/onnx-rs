@@ -45,10 +45,10 @@ fn test_roundtrip_tensor_with_float8_type() {
     let model = Model {
         graph: Some(Graph {
             initializer: vec![TensorProto {
-                name: "f8_weight".to_string(),
+                name: "f8_weight",
                 dims: vec![4],
                 data_type: DataType::Float8e4m3fn,
-                raw_data: vec![0x10, 0x20, 0x30, 0x40],
+                raw_data: &[0x10, 0x20, 0x30, 0x40],
                 ..Default::default()
             }],
             ..Default::default()
@@ -65,10 +65,10 @@ fn test_roundtrip_tensor_with_int4_type() {
     let model = Model {
         graph: Some(Graph {
             initializer: vec![TensorProto {
-                name: "i4".to_string(),
+                name: "i4",
                 dims: vec![8],
                 data_type: DataType::Int4,
-                raw_data: vec![0x12, 0x34, 0x56, 0x78],
+                raw_data: &[0x12, 0x34, 0x56, 0x78],
                 ..Default::default()
             }],
             ..Default::default()
@@ -86,11 +86,9 @@ fn test_roundtrip_tensor_with_int4_type() {
 
 #[test]
 fn test_zero_ir_version_roundtrip() {
-    // ir_version=0 is valid and should survive a roundtrip
-    // In proto3, 0 is default and won't be serialized — that's correct behavior
     let model = Model {
         ir_version: 0,
-        producer_name: "test".to_string(),
+        producer_name: "test",
         ..Default::default()
     };
     let bytes = encode(&model);
@@ -104,7 +102,7 @@ fn test_model_with_no_graph() {
     let model = Model {
         ir_version: 7,
         opset_import: vec![OperatorSetId {
-            domain: String::new(),
+            domain: "",
             version: 13,
         }],
         graph: None,
@@ -118,14 +116,12 @@ fn test_model_with_no_graph() {
 
 #[test]
 fn test_default_attribute_values_roundtrip() {
-    // Attribute with f=0.0 — zero float should roundtrip correctly
-    // In proto3, f=0.0 won't be serialized, so on parse it comes back as 0.0 default
     let model = Model {
         graph: Some(Graph {
             node: vec![Node {
                 op_type: OpType::Relu,
                 attribute: vec![Attribute {
-                    name: "test_attr".to_string(),
+                    name: "test_attr",
                     r#type: AttributeType::Int,
                     i: 0,
                     ..Default::default()
@@ -153,7 +149,7 @@ fn test_negative_int64_in_tensor() {
     let model = Model {
         graph: Some(Graph {
             initializer: vec![TensorProto {
-                name: "neg".to_string(),
+                name: "neg",
                 data_type: DataType::Int64,
                 int64_data: vec![-1, -100, -9999, i64::MIN],
                 ..Default::default()
@@ -175,7 +171,7 @@ fn test_negative_int32_in_tensor() {
     let model = Model {
         graph: Some(Graph {
             initializer: vec![TensorProto {
-                name: "neg32".to_string(),
+                name: "neg32",
                 data_type: DataType::Int32,
                 int32_data: vec![-1, -42, i32::MIN],
                 ..Default::default()
@@ -199,7 +195,7 @@ fn test_negative_attribute_int() {
             node: vec![Node {
                 op_type: OpType::Concat,
                 attribute: vec![Attribute {
-                    name: "axis".to_string(),
+                    name: "axis",
                     r#type: AttributeType::Int,
                     i: -1,
                     ..Default::default()
@@ -222,7 +218,7 @@ fn test_negative_ints_attribute() {
             node: vec![Node {
                 op_type: OpType::Unsqueeze,
                 attribute: vec![Attribute {
-                    name: "axes".to_string(),
+                    name: "axes",
                     r#type: AttributeType::Ints,
                     ints: vec![-1, -2, 0, 1],
                     ..Default::default()
@@ -248,7 +244,7 @@ fn test_negative_ints_attribute() {
 #[test]
 fn test_unicode_doc_string() {
     let model = Model {
-        doc_string: "模型描述 — réseau de neurones 🧠".to_string(),
+        doc_string: "模型描述 — réseau de neurones 🧠",
         ..Default::default()
     };
     let bytes = encode(&model);
@@ -261,7 +257,7 @@ fn test_unicode_node_name() {
     let model = Model {
         graph: Some(Graph {
             node: vec![Node {
-                name: "层_1".to_string(),
+                name: "层_1",
                 op_type: OpType::Relu,
                 ..Default::default()
             }],
@@ -283,7 +279,7 @@ fn test_scalar_tensor_roundtrip() {
     let model = Model {
         graph: Some(Graph {
             initializer: vec![TensorProto {
-                name: "scalar".to_string(),
+                name: "scalar",
                 dims: vec![],
                 data_type: DataType::Float,
                 float_data: vec![3.14],
@@ -308,22 +304,22 @@ fn test_scalar_tensor_roundtrip() {
 fn test_ref_attr_name_roundtrip() {
     let model = Model {
         functions: vec![Function {
-            name: "MyFunc".to_string(),
-            attribute: vec!["alpha".to_string()],
+            name: "MyFunc",
+            attribute: vec!["alpha"],
             node: vec![Node {
                 op_type: OpType::LeakyRelu,
-                input: vec!["x".into()],
-                output: vec!["y".into()],
+                input: vec!["x"],
+                output: vec!["y"],
                 attribute: vec![Attribute {
-                    name: "alpha".to_string(),
+                    name: "alpha",
                     r#type: AttributeType::Float,
-                    ref_attr_name: "alpha".to_string(),
+                    ref_attr_name: "alpha",
                     ..Default::default()
                 }],
                 ..Default::default()
             }],
-            input: vec!["x".into()],
-            output: vec!["y".into()],
+            input: vec!["x"],
+            output: vec!["y"],
             ..Default::default()
         }],
         ..Default::default()
@@ -345,9 +341,9 @@ fn test_attribute_type_proto_roundtrip() {
     let model = Model {
         graph: Some(Graph {
             node: vec![Node {
-                op_type: OpType::Custom("TypedOp".into()),
+                op_type: OpType::Custom("TypedOp"),
                 attribute: vec![Attribute {
-                    name: "output_type".to_string(),
+                    name: "output_type",
                     r#type: AttributeType::TypeProto,
                     tp: Some(TypeProto {
                         value: Some(TypeValue::Tensor(TensorTypeProto {
@@ -384,9 +380,9 @@ fn test_attribute_type_protos_repeated_roundtrip() {
     let model = Model {
         graph: Some(Graph {
             node: vec![Node {
-                op_type: OpType::Custom("MultiTypedOp".into()),
+                op_type: OpType::Custom("MultiTypedOp"),
                 attribute: vec![Attribute {
-                    name: "types".to_string(),
+                    name: "types",
                     r#type: AttributeType::TypeProtos,
                     type_protos: vec![
                         TypeProto {
@@ -425,12 +421,12 @@ fn test_attribute_type_protos_repeated_roundtrip() {
 #[test]
 fn test_if_node_with_then_else_branches() {
     let then_graph = Graph {
-        name: "then_branch".to_string(),
+        name: "then_branch",
         node: vec![Node {
             op_type: OpType::Constant,
-            output: vec!["then_out".into()],
+            output: vec!["then_out"],
             attribute: vec![Attribute {
-                name: "value".into(),
+                name: "value",
                 r#type: AttributeType::Tensor,
                 t: Some(TensorProto {
                     data_type: DataType::Float,
@@ -442,19 +438,19 @@ fn test_if_node_with_then_else_branches() {
             ..Default::default()
         }],
         output: vec![ValueInfo {
-            name: "then_out".into(),
+            name: "then_out",
             ..Default::default()
         }],
         ..Default::default()
     };
 
     let else_graph = Graph {
-        name: "else_branch".to_string(),
+        name: "else_branch",
         node: vec![Node {
             op_type: OpType::Constant,
-            output: vec!["else_out".into()],
+            output: vec!["else_out"],
             attribute: vec![Attribute {
-                name: "value".into(),
+                name: "value",
                 r#type: AttributeType::Tensor,
                 t: Some(TensorProto {
                     data_type: DataType::Float,
@@ -466,7 +462,7 @@ fn test_if_node_with_then_else_branches() {
             ..Default::default()
         }],
         output: vec![ValueInfo {
-            name: "else_out".into(),
+            name: "else_out",
             ..Default::default()
         }],
         ..Default::default()
@@ -477,17 +473,17 @@ fn test_if_node_with_then_else_branches() {
         graph: Some(Graph {
             node: vec![Node {
                 op_type: OpType::If,
-                input: vec!["cond".into()],
-                output: vec!["result".into()],
+                input: vec!["cond"],
+                output: vec!["result"],
                 attribute: vec![
                     Attribute {
-                        name: "then_branch".to_string(),
+                        name: "then_branch",
                         r#type: AttributeType::Graph,
                         g: Some(Box::new(then_graph)),
                         ..Default::default()
                     },
                     Attribute {
-                        name: "else_branch".to_string(),
+                        name: "else_branch",
                         r#type: AttributeType::Graph,
                         g: Some(Box::new(else_graph)),
                         ..Default::default()
@@ -516,19 +512,18 @@ fn test_if_node_with_then_else_branches() {
 
 #[test]
 fn test_node_with_empty_optional_inputs() {
-    // BatchNormalization has 5 inputs, some models use "" for optional ones
     let model = Model {
         graph: Some(Graph {
             node: vec![Node {
                 op_type: OpType::BatchNormalization,
                 input: vec![
-                    "x".into(),
-                    "scale".into(),
-                    "bias".into(),
-                    "".into(), // optional mean
-                    "".into(), // optional var
+                    "x",
+                    "scale",
+                    "bias",
+                    "",
+                    "",
                 ],
-                output: vec!["y".into()],
+                output: vec!["y"],
                 ..Default::default()
             }],
             ..Default::default()
@@ -552,15 +547,15 @@ fn test_quantization_annotation_roundtrip() {
     let model = Model {
         graph: Some(Graph {
             quantization_annotation: vec![TensorAnnotation {
-                tensor_name: "conv1_weight".to_string(),
+                tensor_name: "conv1_weight",
                 quant_parameter_tensor_names: vec![
                     StringStringEntry {
-                        key: "SCALE_TENSOR".into(),
-                        value: "conv1_weight_scale".into(),
+                        key: "SCALE_TENSOR",
+                        value: "conv1_weight_scale",
                     },
                     StringStringEntry {
-                        key: "ZERO_POINT_TENSOR".into(),
-                        value: "conv1_weight_zp".into(),
+                        key: "ZERO_POINT_TENSOR",
+                        value: "conv1_weight_zp",
                     },
                 ],
             }],
@@ -586,18 +581,18 @@ fn test_symbolic_dim_with_operators() {
     let model = Model {
         graph: Some(Graph {
             input: vec![ValueInfo {
-                name: "x".to_string(),
+                name: "x",
                 r#type: Some(TypeProto {
                     value: Some(TypeValue::Tensor(TensorTypeProto {
                         elem_type: DataType::Float,
                         shape: Some(TensorShape {
                             dim: vec![
                                 TensorShapeDimension {
-                                    value: Dimension::Param("M + N".into()),
+                                    value: Dimension::Param("M + N"),
                                     ..Default::default()
                                 },
                                 TensorShapeDimension {
-                                    value: Dimension::Param("batch * 2".into()),
+                                    value: Dimension::Param("batch * 2"),
                                     ..Default::default()
                                 },
                             ],
@@ -618,8 +613,8 @@ fn test_symbolic_dim_with_operators() {
         Some(TypeValue::Tensor(t)) => t.shape.as_ref().unwrap(),
         _ => panic!("expected tensor type"),
     };
-    assert_eq!(shape.dim[0].value, Dimension::Param("M + N".into()));
-    assert_eq!(shape.dim[1].value, Dimension::Param("batch * 2".into()));
+    assert_eq!(shape.dim[0].value, Dimension::Param("M + N"));
+    assert_eq!(shape.dim[1].value, Dimension::Param("batch * 2"));
 }
 
 // ============================================================
@@ -633,33 +628,33 @@ fn test_graph_value_info_intermediates() {
             node: vec![
                 Node {
                     op_type: OpType::Relu,
-                    input: vec!["x".into()],
-                    output: vec!["relu_out".into()],
+                    input: vec!["x"],
+                    output: vec!["relu_out"],
                     ..Default::default()
                 },
                 Node {
                     op_type: OpType::Sigmoid,
-                    input: vec!["relu_out".into()],
-                    output: vec!["y".into()],
+                    input: vec!["relu_out"],
+                    output: vec!["y"],
                     ..Default::default()
                 },
             ],
             input: vec![ValueInfo {
-                name: "x".into(),
+                name: "x",
                 ..Default::default()
             }],
             output: vec![ValueInfo {
-                name: "y".into(),
+                name: "y",
                 ..Default::default()
             }],
             value_info: vec![ValueInfo {
-                name: "relu_out".into(),
+                name: "relu_out",
                 r#type: Some(TypeProto {
                     value: Some(TypeValue::Tensor(TensorTypeProto {
                         elem_type: DataType::Float,
                         shape: Some(TensorShape {
                             dim: vec![TensorShapeDimension {
-                                value: Dimension::Param("N".into()),
+                                value: Dimension::Param("N"),
                                 ..Default::default()
                             }],
                         }),
@@ -688,7 +683,7 @@ fn test_optional_type_roundtrip() {
     let model = Model {
         graph: Some(Graph {
             input: vec![ValueInfo {
-                name: "opt".into(),
+                name: "opt",
                 r#type: Some(TypeProto {
                     value: Some(TypeValue::Optional(OptionalTypeProto {
                         elem_type: Box::new(TypeProto {
@@ -727,7 +722,7 @@ fn test_sparse_tensor_type_roundtrip() {
     let model = Model {
         graph: Some(Graph {
             input: vec![ValueInfo {
-                name: "sp".into(),
+                name: "sp",
                 r#type: Some(TypeProto {
                     value: Some(TypeValue::SparseTensor(SparseTensorTypeProto {
                         elem_type: DataType::Float,
@@ -772,7 +767,7 @@ fn test_nested_optional_sequence_type() {
     let model = Model {
         graph: Some(Graph {
             input: vec![ValueInfo {
-                name: "opt_seq".into(),
+                name: "opt_seq",
                 r#type: Some(TypeProto {
                     value: Some(TypeValue::Optional(OptionalTypeProto {
                         elem_type: Box::new(TypeProto {
@@ -807,16 +802,17 @@ fn test_nested_optional_sequence_type() {
 
 #[test]
 fn test_tensor_segment_roundtrip() {
+    let raw_data = vec![0u8; 400];
     let model = Model {
         graph: Some(Graph {
             initializer: vec![TensorProto {
-                name: "chunked".to_string(),
+                name: "chunked",
                 data_type: DataType::Float,
                 segment: Some(TensorSegment {
                     begin: 0,
                     end: 100,
                 }),
-                raw_data: vec![0; 400], // 100 floats
+                raw_data: &raw_data,
                 ..Default::default()
             }],
             ..Default::default()
@@ -837,9 +833,12 @@ fn test_tensor_segment_roundtrip() {
 
 #[test]
 fn test_roundtrip_large_graph() {
+    let names: Vec<String> = (0..200).map(|i| format!("node_{i}")).collect();
+    let tensors: Vec<String> = (0..=200).map(|i| format!("t_{i}")).collect();
+
     let nodes: Vec<Node> = (0..200)
         .map(|i| Node {
-            name: format!("node_{i}"),
+            name: &names[i],
             op_type: if i % 3 == 0 {
                 OpType::Conv
             } else if i % 3 == 1 {
@@ -847,8 +846,8 @@ fn test_roundtrip_large_graph() {
             } else {
                 OpType::Add
             },
-            input: vec![format!("t_{i}")],
-            output: vec![format!("t_{}", i + 1)],
+            input: vec![&tensors[i]],
+            output: vec![&tensors[i + 1]],
             ..Default::default()
         })
         .collect();
@@ -856,7 +855,7 @@ fn test_roundtrip_large_graph() {
     let model = Model {
         ir_version: 8,
         graph: Some(Graph {
-            name: "big".to_string(),
+            name: "big",
             node: nodes,
             ..Default::default()
         }),
@@ -876,19 +875,19 @@ fn test_attribute_tensors_repeated() {
     let model = Model {
         graph: Some(Graph {
             node: vec![Node {
-                op_type: OpType::Custom("MultiTensor".into()),
+                op_type: OpType::Custom("MultiTensor"),
                 attribute: vec![Attribute {
-                    name: "weights".into(),
+                    name: "weights",
                     r#type: AttributeType::Tensors,
                     tensors: vec![
                         TensorProto {
-                            name: "w1".into(),
+                            name: "w1",
                             data_type: DataType::Float,
                             float_data: vec![1.0, 2.0],
                             ..Default::default()
                         },
                         TensorProto {
-                            name: "w2".into(),
+                            name: "w2",
                             data_type: DataType::Float,
                             float_data: vec![3.0, 4.0],
                             ..Default::default()
@@ -919,17 +918,17 @@ fn test_attribute_graphs_repeated() {
     let model = Model {
         graph: Some(Graph {
             node: vec![Node {
-                op_type: OpType::Custom("MultiGraph".into()),
+                op_type: OpType::Custom("MultiGraph"),
                 attribute: vec![Attribute {
-                    name: "bodies".into(),
+                    name: "bodies",
                     r#type: AttributeType::Graphs,
                     graphs: vec![
                         Graph {
-                            name: "body0".into(),
+                            name: "body0",
                             ..Default::default()
                         },
                         Graph {
-                            name: "body1".into(),
+                            name: "body1",
                             ..Default::default()
                         },
                     ],
@@ -960,7 +959,7 @@ fn test_attribute_sparse_tensor_roundtrip() {
             node: vec![Node {
                 op_type: OpType::Constant,
                 attribute: vec![Attribute {
-                    name: "sparse_value".into(),
+                    name: "sparse_value",
                     r#type: AttributeType::SparseTensor,
                     sparse_tensor: Some(SparseTensor {
                         dims: vec![10, 10],
@@ -998,21 +997,21 @@ fn test_attribute_sparse_tensor_roundtrip() {
 fn test_function_attribute_proto_defaults() {
     let model = Model {
         functions: vec![Function {
-            name: "MyFunc".into(),
+            name: "MyFunc",
             attribute_proto: vec![Attribute {
-                name: "epsilon".into(),
+                name: "epsilon",
                 r#type: AttributeType::Float,
                 f: 1e-5,
                 ..Default::default()
             }],
             node: vec![Node {
                 op_type: OpType::Add,
-                input: vec!["x".into(), "eps".into()],
-                output: vec!["y".into()],
+                input: vec!["x", "eps"],
+                output: vec!["y"],
                 ..Default::default()
             }],
-            input: vec!["x".into()],
-            output: vec!["y".into()],
+            input: vec!["x"],
+            output: vec!["y"],
             ..Default::default()
         }],
         ..Default::default()
@@ -1033,7 +1032,7 @@ fn test_tensor_uint64_data_roundtrip() {
     let model = Model {
         graph: Some(Graph {
             initializer: vec![TensorProto {
-                name: "u64".into(),
+                name: "u64",
                 data_type: DataType::Uint64,
                 uint64_data: vec![0, 1, u64::MAX, 42],
                 ..Default::default()
@@ -1059,9 +1058,9 @@ fn test_node_empty_op_type() {
     let model = Model {
         graph: Some(Graph {
             node: vec![Node {
-                op_type: OpType::Custom(String::new()),
-                input: vec!["x".into()],
-                output: vec!["y".into()],
+                op_type: OpType::Custom(""),
+                input: vec!["x"],
+                output: vec!["y"],
                 ..Default::default()
             }],
             ..Default::default()
@@ -1072,7 +1071,7 @@ fn test_node_empty_op_type() {
     let parsed = parse(&bytes).unwrap();
     assert_eq!(
         parsed.graph.unwrap().node[0].op_type,
-        OpType::Custom(String::new())
+        OpType::Custom("")
     );
 }
 
@@ -1085,24 +1084,24 @@ fn test_denotation_fields_roundtrip() {
     let model = Model {
         graph: Some(Graph {
             input: vec![ValueInfo {
-                name: "image".into(),
+                name: "image",
                 r#type: Some(TypeProto {
                     value: Some(TypeValue::Tensor(TensorTypeProto {
                         elem_type: DataType::Float,
                         shape: Some(TensorShape {
                             dim: vec![
                                 TensorShapeDimension {
-                                    value: Dimension::Param("N".into()),
-                                    denotation: "DATA_BATCH".into(),
+                                    value: Dimension::Param("N"),
+                                    denotation: "DATA_BATCH",
                                 },
                                 TensorShapeDimension {
                                     value: Dimension::Value(3),
-                                    denotation: "DATA_CHANNEL".into(),
+                                    denotation: "DATA_CHANNEL",
                                 },
                             ],
                         }),
                     })),
-                    denotation: "IMAGE".into(),
+                    denotation: "IMAGE",
                 }),
                 ..Default::default()
             }],

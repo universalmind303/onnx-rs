@@ -429,7 +429,7 @@ fn test_parse_symbolic_dimension() {
     match tp.value.as_ref().unwrap() {
         TypeValue::Tensor(t) => {
             match &t.shape.as_ref().unwrap().dim[0].value {
-                Dimension::Param(p) => assert_eq!(p, "batch_size"),
+                Dimension::Param(p) => assert_eq!(*p, "batch_size"),
                 _ => panic!("expected dim param"),
             }
         }

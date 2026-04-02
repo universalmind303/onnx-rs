@@ -81,7 +81,7 @@ fn test_node_default() {
     let node = Node::default();
     assert!(node.input.is_empty());
     assert!(node.output.is_empty());
-    assert_eq!(node.op_type, OpType::Custom(String::new()));
+    assert_eq!(node.op_type, OpType::Custom(""));
     assert!(node.attribute.is_empty());
 }
 
@@ -119,7 +119,7 @@ fn test_model_debug_clone() {
 #[test]
 fn test_dimension_variants() {
     let v = Dimension::Value(42);
-    let p = Dimension::Param("batch".to_string());
+    let p = Dimension::Param("batch");
     assert_ne!(v, p);
     let v2 = v.clone();
     assert_eq!(v, v2);
